@@ -1,0 +1,148 @@
+====================================================
+NON-NEGOTIABLE AUDIO RULE:
+NO PITCH DRIFT
+====================================================
+
+Pitch changes are NOT acceptable.
+
+Do not treat playbackRate stretching as an acceptable repair method.
+
+Current playbackRate-based stretch may exist only as a clearly marked temporary engineering placeholder, but it must not be presented as a real solution.
+
+The finished app must preserve pitch.
+
+If the app cannot preserve pitch for a timing operation, it should:
+- warn the user
+- avoid applying destructive pitch-changing repair
+- prefer alternate repair strategies
+
+====================================================
+PITCH-PRESERVING TIMING REPAIR PHILOSOPHY
+====================================================
+
+STITCHD should repair timing without changing musical pitch.
+
+The goal is:
+- same pitch
+- same key
+- same tonal character
+- tighter timing
+
+For AI-generated music repair and similar-take reconstruction, pitch drift is unacceptable.
+
+====================================================
+PREFERRED TIMING REPAIR STRATEGIES
+====================================================
+
+Instead of changing pitch to force timing, the app should eventually use intelligent micro-editing and source replacement techniques.
+
+When a section needs to become shorter/faster:
+- detect tiny surrounding audio regions that can be trimmed
+- remove micro-gaps
+- shorten sustained transitions where possible
+- tighten silence or low-energy areas
+- make invisible micro-cuts at zero-crossings
+- use short crossfades to hide edits
+- avoid cutting important transients/vocals
+
+When a section needs to become longer/slower:
+- find matching or similar nearby audio that can be duplicated or swapped in
+- extend sustained tones or ambience where possible
+- duplicate stable rhythmic material if musically safe
+- use seamless loop-like extension only where artifact-free
+- borrow matching audio from alternate versions/takes when available
+- use crossfaded inserts instead of pitch-changing stretch where possible
+
+====================================================
+SIMILAR-AUDIO SWAP / MICRO-SURGERY GOAL
+====================================================
+
+Finished-product goal:
+
+If two imported versions contain matching or similar musical material, STITCHD should be able to repair timing by swapping, trimming, extending, or replacing tiny sections of audio rather than changing pitch.
+
+Example:
+If Song 2 bridge is slightly too long for Song 1’s bridge slot:
+- do not pitch it up
+- identify low-impact micro-regions to remove
+- or replace the problematic region with a shorter matching phrase
+- or trim tiny surrounding material
+- preserve pitch and musical feel
+
+Example:
+If Song 2 bridge is slightly too short:
+- do not pitch it down
+- identify similar audio that can extend the phrase
+- duplicate/extend stable material
+- borrow a matching micro-region from another version
+- crossfade invisibly
+
+====================================================
+HIGH-QUALITY TIME STRETCHING RULE
+====================================================
+
+True pitch-preserving time stretching may be allowed only if using a high-quality algorithm.
+
+Future stretch engines should support model/algorithm modes such as:
+- Auto
+- Rhythmic / Percussion
+- Monophonic
+- Polyphonic
+- Vocal
+- Texture / Ambient
+
+But:
+- low-quality pitch-changing stretch is not acceptable as final behavior
+- playbackRate stretch must remain draft-only
+- all UI must say clearly if pitch is not preserved
+
+====================================================
+USER EXPECTATION
+====================================================
+
+The user expects that after import/alignment:
+
+- tracks are analyzed
+- average BPM is detected
+- timing drift is smoothed
+- sections are aligned to the master grid
+- pitch remains stable
+- the same-key/song versions line up precisely enough for section replacement
+
+The user should be able to replace a section from one version into another without obvious pitch drift, tempo wobble, or seam artifacts.
+
+====================================================
+REPAIR PRIORITY ORDER
+====================================================
+
+When aligning or fitting a replacement section:
+
+1. Preserve pitch/key
+2. Preserve musical feel
+3. Preserve transients/vocals
+4. Use micro-edits where invisible
+5. Use similar-source replacement where possible
+6. Use high-quality pitch-preserving stretch only if needed
+7. Never use pitch-changing playbackRate as final repair
+
+====================================================
+UI REQUIREMENT
+====================================================
+
+Any control that currently uses playbackRate must be labeled:
+
+"DRAFT ONLY — changes pitch"
+
+Do not call it:
+- time stretch
+- tempo correction
+- pitch-preserving
+- repair
+
+unless it truly preserves pitch.
+
+Better label:
+"Draft Speed Preview"
+
+Finished feature should be:
+"Pitch-Safe Timing Repair"
