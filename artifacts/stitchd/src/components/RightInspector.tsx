@@ -7,6 +7,8 @@ import { Input } from './ui/input';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Info, AlertTriangle, Maximize2 } from 'lucide-react';
 import { CrossfadeEditor } from './CrossfadeEditor';
 import { SeamAuditionButton } from './SeamAuditionButton';
+import { SECTION_LABELS } from '../lib/sectionLabels';
+import { SectionLabel } from '../types/audio';
 
 export function RightInspector() {
   const { 
@@ -68,6 +70,30 @@ export function RightInspector() {
             className="h-7 px-2 font-medium bg-transparent border-transparent hover:border-border focus:border-primary uppercase tracking-[0.08em] text-xs rounded-none"
           />
         </div>
+
+        {/* Section label anchor — one click assigns, second click clears */}
+        <div className="flex gap-px flex-wrap">
+          {SECTION_LABELS.map(({ key, short }) => {
+            const active = clip.sectionLabel === key;
+            return (
+              <button
+                key={key}
+                onClick={() => updateArrangementClip(clip.id, {
+                  sectionLabel: active ? undefined : key as SectionLabel
+                })}
+                title={key.toUpperCase()}
+                className={`h-5 px-1.5 text-[8px] uppercase tracking-[0.12em] font-medium border transition-colors ${
+                  active
+                    ? 'border-primary/60 text-primary bg-primary/10'
+                    : 'border-border/50 text-muted-foreground/50 hover:border-primary/30 hover:text-foreground/70 hover:bg-white/5'
+                }`}
+              >
+                {short}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="text-[9px] uppercase tracking-[0.12em] font-mono text-muted-foreground px-2">
           SRC: {track.name}
         </div>

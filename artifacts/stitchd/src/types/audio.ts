@@ -16,6 +16,15 @@ export interface AudioTrack {
   bpmConfidence: number;        // 0–1, autocorrelation confidence
 }
 
+export type SectionLabel =
+  | 'intro'
+  | 'verse'
+  | 'pre'
+  | 'chorus'
+  | 'bridge'
+  | 'breakdown'
+  | 'outro';
+
 export interface Clip {
   id: string;
   trackId: string;
@@ -29,6 +38,7 @@ export interface Clip {
   fadeCurve: 'linear' | 'equal-power' | 's-curve';
   gain: number;             // 0-1
   label: string;
+  sectionLabel?: SectionLabel;  // structural anchor — future: section matching, quantize, repair
   color?: string;
   stretchRatio: number;     // 1.0 = no stretch
 }

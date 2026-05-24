@@ -2,6 +2,7 @@ import React, { useRef, useCallback } from 'react';
 import { Clip } from '../types/audio';
 import { useProjectStore } from '../store/useProjectStore';
 import { snapPosition } from '../lib/snapUtils';
+import { getSectionShort } from '../lib/sectionLabels';
 
 interface ClipBlockProps {
   clip: Clip;
@@ -171,8 +172,13 @@ export function ClipBlock({ clip, isSelected, pixelsPerSecond, scrollOffset, hei
         <div className="absolute inset-0 pointer-events-none border border-primary/60 bg-primary/5 z-10" />
       )}
 
-      <div className="absolute top-0 left-0 right-0 h-4 bg-black/40 border-b border-white/5 flex items-center px-1.5 pointer-events-none">
-        <span className="text-[9px] uppercase tracking-[0.08em] text-foreground/80 truncate">
+      <div className="absolute top-0 left-0 right-0 h-4 bg-black/40 border-b border-white/5 flex items-center justify-between px-1.5 gap-1 pointer-events-none">
+        {getSectionShort(clip.sectionLabel) && (
+          <span className="text-[8px] uppercase tracking-[0.14em] text-primary/70 font-semibold shrink-0 leading-none">
+            {getSectionShort(clip.sectionLabel)}
+          </span>
+        )}
+        <span className={`text-[9px] uppercase tracking-[0.08em] truncate leading-none ${clip.sectionLabel ? 'text-foreground/45 text-right flex-1' : 'text-foreground/80'}`}>
           {clip.label}
         </span>
       </div>
