@@ -14,6 +14,9 @@ interface WaveformRendererProps {
   bpm?: number;
 }
 
+// Threshold above which a peak is rendered as a cyan transient spike
+const TRANSIENT_THRESHOLD = 0.60;
+
 export function useWaveformRenderer({
   canvasRef,
   waveformData,
@@ -76,6 +79,7 @@ export function useWaveformRenderer({
 
     const middleY = height / 2;
 
+    // ── Waveform body fill ──
     ctx.beginPath();
     let started = false;
     for (let i = dataStartIndex; i <= dataEndIndex; i++) {
@@ -97,18 +101,17 @@ export function useWaveformRenderer({
     }
     ctx.closePath();
 
-    // Build a color string with a given alpha, stripping any existing alpha first
+    // Strip any existing alpha from a color string
     const withAlpha = (c: string, a: number): string => {
       const stripped = c.replace(/\s*\/\s*[\d.]+\)\s*$/, ')').replace(/\)\s*$/, '');
       return `${stripped} / ${a})`;
     };
 
-    // Vertical gradient
+    // Vertical gradient fill — color body
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, withAlpha(color, 0.5));
-    gradient.addColorStop(0.5, withAlpha(color, 0.72));
-    gradient.addColorStop(1, withAlpha(color, 0.5));
-
+    gradient.addColorStop(0,   withAlpha(color, 0.42));
+    gradient.addColorStop(0.5, withAlpha(color, 0.60));
+    gradient.addColorStop(1,   withAlpha(color, 0.42));
     ctx.fillStyle = gradient;
     ctx.fill();
 
@@ -116,11 +119,11 @@ export function useWaveformRenderer({
     ctx.beginPath();
     ctx.moveTo(0, middleY);
     ctx.lineTo(width, middleY);
-    ctx.strokeStyle = withAlpha(color, 0.5);
+    ctx.strokeStyle = withAlpha(color, 0.35);
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Top outline — crisp edge on the waveform peak
+    // ── Top outline — crisp spectral edge ──
     ctx.beginPath();
     started = false;
     for (let i = dataStartIndex; i <= dataEndIndex; i++) {
@@ -134,9 +137,37 @@ export function useWaveformRenderer({
         ctx.lineTo(x, middleY - amplitude);
       }
     }
-    ctx.strokeStyle = withAlpha(color, 0.85);
+    ctx.strokeStyle = withAlpha(color, 0.80);
     ctx.lineWidth = 1;
     ctx.stroke();
+
+    // ── Cyan transient spikes — signal energy at high peaks ──
+    for (let i = dataStartIndex; i <= dataEndIndex; i++) {
+      const amp = waveformData[i];
+      if (amp <= TRANSIENT_THRESHOLD) continue;
+
+      const timeAtPoint = (i / waveformData.length) * duration;
+      const x = (timeAtPoint - scrollOffset) * pixelsPerSecond;
+      const amplitude = Math.min(1, amp) * (middleY - 2);
+      const energy = (amp - TRANSIENT_THRESHOLD) / (1 - TRANSIENT_THRESHOLD); // 0–1
+      const lightness = Math.round(50 + energy * 22);
+      const alpha = 0.32 + energy * 0.58;
+
+      // Top spike
+      ctx.beginPath();
+      ctx.moveTo(x, middleY - amplitude * 0.55);
+      ctx.lineTo(x, middleY - amplitude);
+      ctx.strokeStyle = `hsl(176 82% ${lightness}% / ${alpha})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Bottom spike (mirrored, slightly dimmer)
+      ctx.beginPath();
+      ctx.moveTo(x, middleY + amplitude * 0.55);
+      ctx.lineTo(x, middleY + amplitude);
+      ctx.strokeStyle = `hsl(176 82% ${lightness}% / ${alpha * 0.65})`;
+      ctx.stroke();
+    }
 
   }, [canvasRef, waveformData, color, pixelsPerSecond, scrollOffset, duration, width, height, showGrid, bpm]);
 }

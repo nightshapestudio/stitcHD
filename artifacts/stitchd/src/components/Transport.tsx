@@ -70,8 +70,8 @@ export function Transport() {
               BAR : BEAT : TICK
             </span>
             <span
-              className="text-xl text-primary tracking-wider"
-              style={{ textShadow: '0 0 12px hsl(176 82% 46% / 0.55)' }}
+              className="text-xl tracking-wider"
+              style={{ color: 'hsl(176 82% 52%)', textShadow: '0 0 14px hsl(176 82% 46% / 0.65)' }}
             >
               {formatBars(playheadPosition, bpm)}
             </span>
@@ -111,12 +111,12 @@ export function Transport() {
             title="Play / Pause (Space)"
           >
             {playbackState === 'playing' ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-primary" style={{ filter: 'drop-shadow(0 0 4px hsl(176 82% 46% / 0.78))' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="hsl(176 82% 52%)" style={{ filter: 'drop-shadow(0 0 5px hsl(176 82% 46% / 0.85))' }}>
                 <rect x="6" y="4" width="4" height="16" />
                 <rect x="14" y="4" width="4" height="16" />
               </svg>
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-primary ml-1 group-hover:drop-shadow-[0_0_8px_hsl(176,82%,46%,0.55)] transition-all">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="hsl(176 82% 52%)" className="ml-1 transition-all" style={{ filter: 'drop-shadow(0 0 6px hsl(176 82% 46% / 0.60))' }}>
                 <path d="M4 2v20l17-10z" />
               </svg>
             )}
@@ -127,7 +127,9 @@ export function Transport() {
             onClick={() => useProjectStore.setState({ isLooping: !isLooping })}
             title="Loop"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isLooping ? 'text-primary drop-shadow-[0_0_4px_hsl(176,82%,46%,0.55)]' : 'text-muted-foreground group-hover:text-foreground'}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={isLooping ? { color: 'hsl(176 82% 52%)', filter: 'drop-shadow(0 0 4px hsl(176 82% 46% / 0.65))' } : undefined}
+              className={isLooping ? '' : 'text-muted-foreground group-hover:text-foreground'}>
               <polyline points="17 1 21 5 17 9" />
               <path d="M3 11V9a4 4 0 0 1 4-4h14" />
               <polyline points="7 23 3 19 7 15" />

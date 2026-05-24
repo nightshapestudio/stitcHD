@@ -86,7 +86,19 @@ export function LeftSidebar() {
       <div className="p-4 border-b border-border space-y-4">
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-transparent border border-border border-l-2 border-l-primary hover:bg-white/5 hover:border-primary/50 text-foreground font-semibold uppercase tracking-[0.08em] rounded-none py-4 text-xs"
+          className="w-full bg-transparent border border-border text-foreground font-semibold uppercase tracking-[0.12em] rounded-none py-4 text-xs transition-all"
+          style={{
+            borderLeft: '2px solid hsl(176 82% 48%)',
+            boxShadow: 'inset 0 0 0 0 transparent',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = 'hsl(176 82% 48% / 0.6)';
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px hsl(176 82% 46% / 0.10)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = '';
+            (e.currentTarget as HTMLElement).style.boxShadow = '';
+          }}
         >
           IMPORT AUDIO
         </Button>

@@ -1,0 +1,166 @@
+URGENT COLOR + VISUAL BALANCE CORRECTION.
+
+The current STITCHD UI has drifted too far into:
+- monochrome matte black
+- dim purple
+- almost no cyan signal energy
+
+This is NOT the intended NIGHTSHAPE audio visual language.
+
+The goal is NOT:
+“all cyan”
+OR
+“all black.”
+
+The goal is:
+a controlled balance of:
+- matte black
+- spectral cyan
+- violet/periwinkle
+- restrained fuchsia energy
+- cinematic glow contrast
+
+Right now the UI feels too dead and underlit.
+
+====================================================
+VISUAL TARGET
+====================================================
+
+STITCHD should visually feel like:
+- a luxury audio reconstruction workstation
+- cinematic signal processing
+- spectral forensic editing
+- emotionally charged precision tooling
+
+NOT:
+- a flat dark productivity app
+- monochrome prototype UI
+- generic black dashboard
+
+====================================================
+COLOR BALANCE RULE
+====================================================
+
+Use ALL THREE VISUAL LAYERS:
+
+1. MATTE FOUNDATION
+(neutral dark surfaces)
+
+#000000
+#0A0A0A
+#111111
+#151515
+#1B1B1B
+
+2. GEM-TONE ATMOSPHERE
+(emotional depth)
+
+#5632B4
+#2C1B61
+#7B61FF
+#A89BFF
+#9D4EDD
+#8C85A3
+
+3. SIGNAL CYAN
+(interaction + electrical precision)
+
+#15D5C8
+#00E5FF
+#4EF2FF
+
+====================================================
+CURRENT PROBLEM
+====================================================
+
+The current build:
+- has almost no cyan presence
+- lacks luminous interaction contrast
+- feels visually muted/dead
+- does not inherit enough DRUMKIT energy
+- loses the “spectral signal” feeling
+
+====================================================
+WHAT NEEDS MORE CYAN
+====================================================
+
+Add restrained but clear cyan energy to:
+
+- playhead glow
+- waveform transients
+- active beat markers
+- selected clip edges
+- snap lock indicators
+- transport/play controls
+- seam audition state
+- active timeline focus
+- metronome pulse visuals
+- precision alignment feedback
+
+====================================================
+WHAT SHOULD STAY PURPLE
+====================================================
+
+Purple/periwinkle should dominate:
+- atmospheric depth
+- waveform body glow
+- focused arrangement clips
+- section labels
+- timeline mood
+- inactive spectral rendering
+- cinematic UI emotion
+
+====================================================
+DO NOT TURN EVERYTHING CYAN
+====================================================
+
+Cyan should feel like:
+- electricity
+- signal flow
+- active processing
+- timing precision
+
+Purple should feel like:
+- atmosphere
+- depth
+- memory
+- emotion
+- spectral texture
+
+Black should feel like:
+- void
+- matte hardware
+- cinematic negative space
+
+====================================================
+DRUMKIT REFERENCE
+====================================================
+
+The DRUMKIT concepts already had the correct balance:
+
+- black matte void
+- cyan signal energy
+- purple spectral atmosphere
+- restrained glitch rendering
+- luminous waveform contrast
+
+STITCHD should inherit that same visual language.
+
+====================================================
+IMPORTANT
+====================================================
+
+Do not flatten the interface visually.
+
+The app should feel:
+- alive
+- electrically active
+- cinematic
+- premium
+- tactile
+
+while still remaining:
+- restrained
+- legible
+- low-fatigue
+- professional.

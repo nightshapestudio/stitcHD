@@ -279,13 +279,20 @@ export function Timeline() {
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden relative">
         {tracks.length === 0 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-4">
-            <div className="w-16 h-16 border border-dashed border-muted-foreground/30 flex items-center justify-center">
-              <span className="text-2xl text-muted-foreground/40">+</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
+            {/* DRUMKIT-style corner-bracket drop zone */}
+            <div className="relative w-24 h-16">
+              <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2" style={{ borderColor: 'hsl(176 82% 48% / 0.55)' }} />
+              <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2" style={{ borderColor: 'hsl(176 82% 48% / 0.55)' }} />
+              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2" style={{ borderColor: 'hsl(176 82% 48% / 0.55)' }} />
+              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2" style={{ borderColor: 'hsl(176 82% 48% / 0.55)' }} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xl font-thin" style={{ color: 'hsl(176 82% 48% / 0.35)' }}>+</span>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-[9px] uppercase tracking-[0.12em] font-medium text-foreground/60 mb-1">DROP AUDIO FILES</p>
-              <p className="text-xs text-muted-foreground/50 font-mono">WAV, MP3, M4A, AIFF</p>
+            <div className="text-center space-y-1">
+              <p className="text-[9px] uppercase tracking-[0.16em] font-medium" style={{ color: 'hsl(176 82% 52% / 0.70)' }}>DROP AUDIO FILES</p>
+              <p className="text-[9px] text-muted-foreground/40 font-mono tracking-widest">WAV · MP3 · M4A · AIFF</p>
             </div>
           </div>
         ) : (
@@ -384,7 +391,7 @@ export function Timeline() {
       {playheadVisible && (
         <div
           className="absolute top-0 bottom-0 pointer-events-none z-50"
-          style={{ left: playheadX, width: 1, backgroundColor: 'hsl(var(--primary))', opacity: 0.9 }}
+          style={{ left: playheadX, width: 1, backgroundColor: 'hsl(176 82% 52%)', opacity: 0.9, boxShadow: '0 0 6px hsl(176 82% 46% / 0.55)' }}
         >
           <div
             className="absolute top-0"
@@ -393,9 +400,9 @@ export function Timeline() {
               height: 0,
               borderLeft: '5px solid transparent',
               borderRight: '5px solid transparent',
-              borderTop: '7px solid hsl(var(--primary))',
+              borderTop: '7px solid hsl(176 82% 52%)',
               left: -4,
-              filter: 'drop-shadow(0 0 3px hsl(var(--primary) / 0.8))',
+              filter: 'drop-shadow(0 0 4px hsl(176 82% 46% / 0.90))',
             }}
           />
         </div>
