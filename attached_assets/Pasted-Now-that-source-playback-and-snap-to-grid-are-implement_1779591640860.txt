@@ -1,0 +1,112 @@
+Now that source playback and snap-to-grid are implemented, do NOT add major new systems yet.
+
+Next priority is:
+REAL-WORLD WORKFLOW HARDENING.
+
+I want STITCHD to feel fast, reliable, and intuitive during actual song reconstruction work.
+
+Focus on improving the current workflow instead of expanding scope.
+
+====================================================
+CURRENT CORE WORKFLOW
+====================================================
+
+1. import tracks
+2. detect BPM
+3. play source tracks immediately
+4. segment tracks
+5. append/replace sections
+6. snap to grid
+7. seam audition
+8. adjust fades
+9. export WAV
+
+====================================================
+NEXT DEVELOPMENT PASS
+====================================================
+
+Perform a workflow polish + reliability pass.
+
+Focus specifically on:
+
+1. Source playback reliability
+- verify source playback always works before arrangement clips exist
+- verify selected track playback works consistently
+- verify stop/play behavior is stable
+- verify no clicks/pops at playback boundaries
+
+2. Snap-to-grid polish
+- verify append snapping never accumulates tiny timing gaps
+- verify trim snapping feels stable
+- verify replace workflow preserves snapped timing
+- verify drag behavior feels responsive and not sticky
+- verify Shift invert behavior is reliable
+
+3. Seam audition polish
+- verify loop always centers around seam correctly
+- verify stretched clips audition correctly
+- verify nudgeOffset is respected
+- verify no clicks when repeatedly auditioning seams
+
+4. Fade workflow
+- verify fade presets feel useful in practice
+- verify overlapping fades remain stable
+- verify fades survive replace operations correctly
+
+5. Export verification
+- verify exported WAV timing matches playback timing
+- verify snapped clips export correctly
+- verify stretched clips do not truncate
+- verify fades export correctly
+
+====================================================
+SMART SNAP
+====================================================
+
+Future improvement:
+Add Logic-style Smart Snap later.
+
+Behavior:
+- Smart Snap automatically changes snap resolution based on zoom level and edit context.
+- Full clip movement prefers coarser snapping.
+- Fine trimming allows finer snapping.
+- Manual snap modes must still remain available.
+
+DO NOT build this yet unless current snapping feels broken.
+
+====================================================
+DO NOT ADD YET
+====================================================
+
+Do NOT add:
+- loop region
+- waveform seam AI
+- waveform alignment assistant
+- BPM tap overlays
+- AI analysis
+- cloud/auth/SaaS systems
+- mobile layouts
+- plugin systems
+- stem separation
+- unrelated visual features
+
+====================================================
+IMPORTANT PRODUCT DIRECTION
+====================================================
+
+STITCHD is NOT a DAW.
+
+It is:
+- a reconstruction workstation
+- a timing repair tool
+- a section replacement editor
+- a rapid “Frankenstein master” builder
+
+The app succeeds if users can:
+- import multiple imperfect versions
+- quickly swap better sections
+- align timing
+- repair seams
+- export a polished final WAV
+
+without fighting the interface.

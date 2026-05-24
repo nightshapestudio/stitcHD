@@ -32,6 +32,10 @@ export function snapPosition(
 /**
  * Snap forward to the next clean grid boundary at or after pos.
  * Used for append insert positions so new clips land on a clean beat/bar.
+ *
+ * Uses a 1ms epsilon to handle floating-point exact-boundary accumulation:
+ * e.g. rawEnd = 8.0000001 (should be exactly 8.0) correctly stays at 8.0,
+ * not jumping ahead to the next bar.
  */
 export function snapForward(
   pos: number,
@@ -42,6 +46,7 @@ export function snapForward(
   if (!snapEnabled || bpm <= 0) return pos;
   const interval = gridInterval(bpm, resolution);
   if (interval <= 0) return pos;
-  const snapped = Math.ceil(pos / interval) * interval;
-  return snapped;
+  // Subtract a small epsilon so positions within 1ms of a boundary snap TO it, not past it
+  const EPSILON = 0.001;
+  return Math.ceil((pos - EPSILON) / interval) * interval;
 }

@@ -10,6 +10,7 @@ export function Timeline() {
     tracks,
     arrangementClips,
     selectedClipId,
+    selectedTrackId,
     bpm,
     segmentMode,
     zoomLevel,
@@ -24,7 +25,13 @@ export function Timeline() {
     snapEnabled,
     snapResolution,
     snapGuidePosition,
+    selectTrack,
   } = useProjectStore();
+
+  // Compute which track will play in source-only mode so we can badge it
+  const sourcePlayTrackId = arrangementClips.length === 0
+    ? (selectedTrackId || tracks.find(t => t.isReference)?.id || tracks[0]?.id || null)
+    : null;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -301,11 +308,19 @@ export function Timeline() {
                 className="h-20 flex border-b border-border/50 relative z-10"
                 style={{ backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.1)' }}
               >
-                <div className="w-[100px] shrink-0 border-r border-border/80 bg-[#0c0d12] px-2 py-1.5 flex flex-col justify-center">
+                <div
+                  className={`w-[100px] shrink-0 border-r border-border/80 px-2 py-1.5 flex flex-col justify-center cursor-pointer transition-colors select-none ${
+                    sourcePlayTrackId === track.id
+                      ? 'bg-primary/8 border-r-primary/40'
+                      : 'bg-[#0c0d12] hover:bg-white/5'
+                  }`}
+                  onClick={() => selectTrack(track.id)}
+                  title="Click to focus this track for source playback"
+                >
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="text-[10px] uppercase tracking-wide font-medium truncate text-foreground/80 leading-tight">{track.name}</span>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {track.isReference && (
                       <div className="flex items-center gap-0.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary" />
@@ -316,6 +331,11 @@ export function Timeline() {
                       <div className="flex items-center gap-0.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-destructive" />
                         <span className="text-[8px] text-destructive tracking-[0.1em] uppercase">MUTED</span>
+                      </div>
+                    )}
+                    {sourcePlayTrackId === track.id && (
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-[8px] text-primary/70 tracking-[0.1em] uppercase">▶ SRC</span>
                       </div>
                     )}
                   </div>

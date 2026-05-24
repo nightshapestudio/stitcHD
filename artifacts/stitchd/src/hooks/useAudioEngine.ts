@@ -10,12 +10,19 @@ export const meterAnalysers: { left: AnalyserNode | null; right: AnalyserNode | 
 };
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const ANTI_CLICK_MS  = 0.004;  // 4ms ramp-in on every new source to prevent pops
+const SOFT_STOP_MS   = 0.020;  // 20ms ramp-down when user presses Stop/Pause
+const LOOP_XFADE_MS  = 0.010;  // 10ms crossfade ramp when restarting (loop / re-play)
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+type FadeCurve = 'linear' | 'equal-power' | 's-curve';
+
 const stretchedDuration = (sourceDuration: number, stretchRatio: number) =>
   sourceDuration / Math.max(0.05, stretchRatio);
-
-type FadeCurve = 'linear' | 'equal-power' | 's-curve';
 
 function scheduleFadeIn(
   gain: AudioParam,
@@ -54,6 +61,13 @@ function scheduleFadeOut(
     gain.setValueAtTime(fromGain, startTime);
     gain.linearRampToValueAtTime(0, endTime);
   }
+}
+
+// Compute scaled fade durations so they never overlap (same logic used in export)
+function safeScaledFades(fadeIn: number, fadeOut: number, outDuration: number) {
+  const total = fadeIn + fadeOut;
+  const scale = total > 0 && total > outDuration ? outDuration / total : 1.0;
+  return { safeFadeIn: fadeIn * scale, safeFadeOut: fadeOut * scale };
 }
 
 // ---------------------------------------------------------------------------
@@ -109,10 +123,7 @@ export async function renderArrangement(sampleRate: number = 44100): Promise<Blo
     const targetGain = Math.max(0, clip.gain) * Math.max(0, track.volume);
     const fadeCurve: FadeCurve = (clip.fadeCurve as FadeCurve) || 'equal-power';
 
-    const totalFades = (clip.fadeIn || 0) + (clip.fadeOut || 0);
-    const fadeScale = totalFades > 0 && totalFades > outDuration ? outDuration / totalFades : 1.0;
-    const safeFadeIn = (clip.fadeIn || 0) * fadeScale;
-    const safeFadeOut = (clip.fadeOut || 0) * fadeScale;
+    const { safeFadeIn, safeFadeOut } = safeScaledFades(clip.fadeIn || 0, clip.fadeOut || 0, outDuration);
 
     gainNode.gain.setValueAtTime(0, effectiveStart);
     if (safeFadeIn > 0) {
@@ -182,18 +193,18 @@ function encodeWAV(buffer: AudioBuffer, sampleRate: number): Blob {
 // Hook — manages the live AudioContext for playback only
 // ---------------------------------------------------------------------------
 export function useAudioEngine() {
-  const contextRef = useRef<AudioContext | null>(null);
+  const contextRef     = useRef<AudioContext | null>(null);
   const sourceNodesRef = useRef<AudioBufferSourceNode[]>([]);
-  const gainNodesRef = useRef<AudioNode[]>([]);
+  const gainNodesRef   = useRef<AudioNode[]>([]);
   const startOffsetRef = useRef<number>(0);
-  const startTimeRef = useRef<number>(0);
-  const animFrameRef = useRef<number>(0);
-  const isPlayingRef = useRef<boolean>(false);
-  // Tracks the end time for source-only playback (no arrangement clips)
-  const sourceEndRef = useRef<number>(0);
+  const startTimeRef   = useRef<number>(0);
+  const animFrameRef   = useRef<number>(0);
+  const isPlayingRef   = useRef<boolean>(false);
+  // End time (ctx time) for source-only playback — used by tick loop for auto-stop
+  const sourceEndCtxRef = useRef<number>(0);
 
   const playbackState = useProjectStore(s => s.playbackState);
-  const playTrigger = useProjectStore(s => s.playTrigger);
+  const playTrigger   = useProjectStore(s => s.playTrigger);
 
   const getCtx = (): AudioContext => {
     if (!contextRef.current || contextRef.current.state === 'closed') {
@@ -202,23 +213,65 @@ export function useAudioEngine() {
     return contextRef.current;
   };
 
+  // Hard stop — immediate, used internally before starting new playback
   const stopAllSources = useCallback(() => {
     sourceNodesRef.current.forEach(n => {
       try { n.stop(0); } catch (_) {}
       try { n.disconnect(); } catch (_) {}
     });
-    gainNodesRef.current.forEach(n => {
-      try { n.disconnect(); } catch (_) {}
-    });
+    gainNodesRef.current.forEach(n => { try { n.disconnect(); } catch (_) {} });
     sourceNodesRef.current = [];
-    gainNodesRef.current = [];
+    gainNodesRef.current   = [];
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = 0;
     }
     isPlayingRef.current = false;
-    meterAnalysers.left = null;
+    meterAnalysers.left  = null;
     meterAnalysers.right = null;
+  }, []);
+
+  // Soft stop — ramps gain to 0 over SOFT_STOP_MS then hard-stops.
+  // Used for UI-triggered Stop / Pause to eliminate audible pops.
+  const softStopSources = useCallback(() => {
+    // Stop the tick loop immediately so the UI shows the stopped state right away
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
+    isPlayingRef.current = false;
+    meterAnalysers.left  = null;
+    meterAnalysers.right = null;
+
+    const ctx = contextRef.current;
+    const toStop       = [...sourceNodesRef.current];
+    const toDisconnect = [...gainNodesRef.current];
+    sourceNodesRef.current = [];
+    gainNodesRef.current   = [];
+
+    if (!ctx || ctx.state === 'closed') {
+      toStop.forEach(n => { try { n.stop(0); n.disconnect(); } catch (_) {} });
+      toDisconnect.forEach(n => { try { n.disconnect(); } catch (_) {} });
+      return;
+    }
+
+    // Ramp all gain nodes to silence
+    toDisconnect.forEach(n => {
+      if (n instanceof GainNode) {
+        try {
+          n.gain.cancelScheduledValues(ctx.currentTime);
+          n.gain.setValueAtTime(n.gain.value, ctx.currentTime);
+          n.gain.linearRampToValueAtTime(0, ctx.currentTime + SOFT_STOP_MS);
+        } catch (_) {}
+      }
+    });
+
+    // Hard-stop sources after the ramp completes
+    const delay = Math.ceil(SOFT_STOP_MS * 1000) + 15;
+    setTimeout(() => {
+      toStop.forEach(n => { try { n.stop(0); n.disconnect(); } catch (_) {} });
+      toDisconnect.forEach(n => { try { n.disconnect(); } catch (_) {} });
+    }, delay);
   }, []);
 
   const schedulePlayback = useCallback((startOffset: number) => {
@@ -231,13 +284,38 @@ export function useAudioEngine() {
       setPlaybackState,
     } = useProjectStore.getState();
 
-    stopAllSources();
+    // Crossfade existing sources out (prevents pop when looping / re-playing)
+    const prevSources = [...sourceNodesRef.current];
+    const prevGains   = [...gainNodesRef.current];
+    if (prevSources.length > 0 || prevGains.length > 0) {
+      prevGains.forEach(n => {
+        if (n instanceof GainNode) {
+          try {
+            n.gain.cancelScheduledValues(ctx.currentTime);
+            n.gain.setValueAtTime(n.gain.value, ctx.currentTime);
+            n.gain.linearRampToValueAtTime(0, ctx.currentTime + LOOP_XFADE_MS);
+          } catch (_) {}
+        }
+      });
+      setTimeout(() => {
+        prevSources.forEach(n => { try { n.stop(0); n.disconnect(); } catch (_) {} });
+        prevGains.forEach(n => { try { n.disconnect(); } catch (_) {} });
+      }, Math.ceil(LOOP_XFADE_MS * 1000) + 10);
+    }
+    sourceNodesRef.current = [];
+    gainNodesRef.current   = [];
+
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
+
     if (ctx.state === 'suspended') ctx.resume();
 
-    startOffsetRef.current = startOffset;
-    startTimeRef.current = ctx.currentTime;
-    isPlayingRef.current = true;
-    sourceEndRef.current = 0;
+    startOffsetRef.current  = startOffset;
+    startTimeRef.current    = ctx.currentTime;
+    isPlayingRef.current    = true;
+    sourceEndCtxRef.current = 0;
 
     const masterGain = ctx.createGain();
     masterGain.gain.value = 1.0;
@@ -249,24 +327,23 @@ export function useAudioEngine() {
       const splitter = ctx.createChannelSplitter(2);
       masterGain.connect(splitter);
       const aL = ctx.createAnalyser();
-      aL.fftSize = 1024;
-      aL.smoothingTimeConstant = 0;
+      aL.fftSize = 1024; aL.smoothingTimeConstant = 0;
       splitter.connect(aL, 0);
       const aR = ctx.createAnalyser();
-      aR.fftSize = 1024;
-      aR.smoothingTimeConstant = 0;
+      aR.fftSize = 1024; aR.smoothingTimeConstant = 0;
       splitter.connect(aR, 1);
-      meterAnalysers.left = aL;
+      meterAnalysers.left  = aL;
       meterAnalysers.right = aR;
     } catch (_) {}
 
     const hasClips = arrangementClips.length > 0;
 
     if (!hasClips) {
-      // -----------------------------------------------------------------------
-      // SOURCE-ONLY mode: play selected track, reference track, or first track.
-      // This lets users audition imported tracks before building an arrangement.
-      // -----------------------------------------------------------------------
+      // -------------------------------------------------------------------
+      // SOURCE-ONLY mode — play the focused track so users can audition
+      // tracks immediately after import, before any arrangement exists.
+      // Priority: selectedTrackId → reference track → first track.
+      // -------------------------------------------------------------------
       const sourceTrack =
         tracks.find(t => t.id === selectedTrackId) ||
         tracks.find(t => t.isReference) ||
@@ -278,41 +355,51 @@ export function useAudioEngine() {
         return;
       }
 
-      const buf = sourceTrack.audioBuffer;
+      const buf    = sourceTrack.audioBuffer;
       const cStart = Math.max(0, Math.min(buf.duration - 0.001, startOffset));
-      const cDur = Math.max(0, buf.duration - cStart);
-      if (cDur <= 0) {
-        stopAllSources();
-        setPlaybackState('stopped');
-        return;
-      }
+      const cDur   = Math.max(0, buf.duration - cStart);
+      if (cDur <= 0) { stopAllSources(); setPlaybackState('stopped'); return; }
 
       const gainNode = ctx.createGain();
-      gainNode.gain.value = Math.max(0, sourceTrack.volume);
+      // Anti-click ramp-in
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(
+        Math.max(0, sourceTrack.volume),
+        ctx.currentTime + ANTI_CLICK_MS,
+      );
+      // Anti-click ramp-out just before the source ends
+      const srcEndCtx = ctx.currentTime + cDur;
+      gainNode.gain.setValueAtTime(
+        Math.max(0, sourceTrack.volume),
+        Math.max(ctx.currentTime + ANTI_CLICK_MS, srcEndCtx - ANTI_CLICK_MS),
+      );
+      gainNode.gain.linearRampToValueAtTime(0, srcEndCtx);
+
       gainNode.connect(masterGain);
       gainNodesRef.current.push(gainNode);
 
-      const source = ctx.createBufferSource();
+      const source  = ctx.createBufferSource();
       source.buffer = buf;
       source.connect(gainNode);
       sourceNodesRef.current.push(source);
       source.start(ctx.currentTime, cStart, cDur);
 
-      // Record when this source ends so the tick loop can auto-stop
-      sourceEndRef.current = buf.duration;
+      // Store absolute ctx time when this source ends so the tick loop can auto-stop
+      sourceEndCtxRef.current = srcEndCtx;
+
     } else {
-      // -----------------------------------------------------------------------
-      // ARRANGEMENT mode: schedule all clips in the arrangement lane
-      // -----------------------------------------------------------------------
+      // -------------------------------------------------------------------
+      // ARRANGEMENT mode — schedule all clips in the arrangement lane
+      // -------------------------------------------------------------------
       arrangementClips.forEach(clip => {
         const track = tracks.find(t => t.id === clip.trackId);
         if (!track || !track.audioBuffer || track.isMuted) return;
 
-        const nudgeSec = (clip.nudgeOffset || 0) / 1000;
-        const effStart = clip.timelinePosition + nudgeSec;
-        const stretchR = Math.max(0.05, clip.stretchRatio || 1.0);
+        const nudgeSec   = (clip.nudgeOffset || 0) / 1000;
+        const effStart   = clip.timelinePosition + nudgeSec;
+        const stretchR   = Math.max(0.05, clip.stretchRatio || 1.0);
         const outDuration = stretchedDuration(clip.sourceDuration, stretchR);
-        const effEnd = effStart + outDuration;
+        const effEnd     = effStart + outDuration;
 
         if (effEnd <= startOffset) return;
 
@@ -323,32 +410,51 @@ export function useAudioEngine() {
         const targetGain = Math.max(0, clip.gain) * Math.max(0, track.volume);
         const fadeCurve: FadeCurve = (clip.fadeCurve as FadeCurve) || 'equal-power';
 
-        const clipWhen = ctx.currentTime + Math.max(0, effStart - startOffset);
+        // Scale fades so they never overlap — same logic as export renderer
+        const { safeFadeIn, safeFadeOut } = safeScaledFades(
+          clip.fadeIn || 0,
+          clip.fadeOut || 0,
+          outDuration,
+        );
+
+        const clipWhen    = ctx.currentTime + Math.max(0, effStart - startOffset);
         const clipEndWhen = ctx.currentTime + Math.max(0, effEnd - startOffset);
 
-        gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
-
         if (effStart >= startOffset) {
-          scheduleFadeIn(gainNode.gain, fadeCurve, clipWhen, clip.fadeIn, targetGain);
+          // Clip starts in the future — schedule full fade-in
+          if (safeFadeIn > 0) {
+            scheduleFadeIn(gainNode.gain, fadeCurve, clipWhen, safeFadeIn, targetGain);
+          } else {
+            // Anti-click micro-ramp even when there's no explicit fade
+            gainNode.gain.setValueAtTime(0, clipWhen);
+            gainNode.gain.linearRampToValueAtTime(targetGain, clipWhen + ANTI_CLICK_MS);
+          }
         } else {
-          gainNode.gain.setValueAtTime(targetGain, ctx.currentTime);
+          // Clip already started — ramp in from silence over ANTI_CLICK_MS
+          gainNode.gain.setValueAtTime(0, ctx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(targetGain, ctx.currentTime + ANTI_CLICK_MS);
         }
 
-        if (clip.fadeOut > 0) {
-          const foStartWhen = clipEndWhen - clip.fadeOut;
-          if (foStartWhen > ctx.currentTime) {
-            scheduleFadeOut(gainNode.gain, fadeCurve, foStartWhen, clip.fadeOut, targetGain);
-          } else if (clipEndWhen > ctx.currentTime + 0.005) {
-            const elapsedInFade = ctx.currentTime - foStartWhen;
-            const remaining = clip.fadeOut - elapsedInFade;
-            if (remaining > 0.005) {
-              const progress = Math.min(1, elapsedInFade / clip.fadeOut);
-              const fromGain = Math.max(0.001, targetGain * (1 - progress));
-              scheduleFadeOut(gainNode.gain, fadeCurve, ctx.currentTime + 0.001, remaining, fromGain);
+        if (safeFadeOut > 0) {
+          const foStartWhen = clipEndWhen - safeFadeOut;
+          if (foStartWhen > ctx.currentTime + ANTI_CLICK_MS) {
+            scheduleFadeOut(gainNode.gain, fadeCurve, foStartWhen, safeFadeOut, targetGain);
+          } else if (clipEndWhen > ctx.currentTime + ANTI_CLICK_MS) {
+            // We're inside the fade-out — compute the remaining ramp
+            const elapsed  = ctx.currentTime - foStartWhen;
+            const remaining = safeFadeOut - Math.max(0, elapsed);
+            if (remaining > 0.003) {
+              const progress  = Math.min(1, Math.max(0, elapsed) / safeFadeOut);
+              const fromGain  = Math.max(0.0001, targetGain * (1 - progress));
+              scheduleFadeOut(gainNode.gain, fadeCurve, ctx.currentTime + ANTI_CLICK_MS, remaining, fromGain);
             } else {
               gainNode.gain.setValueAtTime(0, ctx.currentTime);
             }
           }
+        } else {
+          // Anti-click micro-ramp at end when no explicit fade
+          gainNode.gain.setValueAtTime(targetGain, Math.max(ctx.currentTime + ANTI_CLICK_MS, clipEndWhen - ANTI_CLICK_MS));
+          gainNode.gain.linearRampToValueAtTime(0, clipEndWhen);
         }
 
         const source = ctx.createBufferSource();
@@ -363,14 +469,14 @@ export function useAudioEngine() {
         if (effStart < startOffset) {
           const outputElapsed = startOffset - effStart;
           const sourceElapsed = outputElapsed * stretchR;
-          srcStart += sourceElapsed;
-          schedWhen = ctx.currentTime;
+          srcStart   += sourceElapsed;
+          schedWhen   = ctx.currentTime;
         }
 
-        const buf = track.audioBuffer;
-        const cStart = Math.max(0, Math.min(buf.duration - 0.001, srcStart));
-        const remainingSource = clip.sourceDuration - (cStart - clip.sourceStart - (clip.slipOffset || 0));
-        const cDur = Math.max(0, Math.min(buf.duration - cStart, remainingSource));
+        const buf       = track.audioBuffer;
+        const cStart    = Math.max(0, Math.min(buf.duration - 0.001, srcStart));
+        const remaining = clip.sourceDuration - (cStart - clip.sourceStart - (clip.slipOffset || 0));
+        const cDur      = Math.max(0, Math.min(buf.duration - cStart, remaining));
         if (cDur <= 0) return;
 
         source.start(schedWhen, cStart, cDur);
@@ -381,7 +487,7 @@ export function useAudioEngine() {
     const tick = () => {
       if (!isPlayingRef.current) return;
       const elapsed = ctx.currentTime - startTimeRef.current;
-      const pos = startOffsetRef.current + elapsed;
+      const pos     = startOffsetRef.current + elapsed;
       setPlayheadPosition(pos);
 
       const { isLooping, loopRegion, arrangementClips: clips } = useProjectStore.getState();
@@ -394,9 +500,9 @@ export function useAudioEngine() {
 
       if (!isLooping) {
         if (clips.length === 0) {
-          // Source-only mode: stop when past the track end
-          if (sourceEndRef.current > 0 && pos >= sourceEndRef.current + 0.1) {
-            stopAllSources();
+          // Source-only: stop when the ctx clock passes the source end time
+          if (sourceEndCtxRef.current > 0 && ctx.currentTime >= sourceEndCtxRef.current + 0.05) {
+            softStopSources();
             setPlaybackState('stopped');
             return;
           }
@@ -406,7 +512,7 @@ export function useAudioEngine() {
             return c.timelinePosition + (c.nudgeOffset || 0) / 1000 + stretchedDuration(c.sourceDuration, r);
           }));
           if (pos >= lastEnd + 0.2) {
-            stopAllSources();
+            softStopSources();
             setPlaybackState('stopped');
             return;
           }
@@ -416,9 +522,9 @@ export function useAudioEngine() {
       animFrameRef.current = requestAnimationFrame(tick);
     };
     animFrameRef.current = requestAnimationFrame(tick);
-  }, [stopAllSources]);
+  }, [stopAllSources, softStopSources]);
 
-  // React to playback state and play trigger changes
+  // React to playback state transitions
   useEffect(() => {
     if (playbackState === 'playing') {
       const pos = useProjectStore.getState().playheadPosition;
@@ -430,18 +536,21 @@ export function useAudioEngine() {
         useProjectStore.getState().setPlayheadPosition(pausedAt);
         startOffsetRef.current = pausedAt;
       }
-      stopAllSources();
+      softStopSources();
     } else if (playbackState === 'stopped') {
-      stopAllSources();
+      softStopSources();
       startOffsetRef.current = 0;
-      useProjectStore.getState().setPlayheadPosition(0);
+      // Defer playhead reset so the tick loop has already stopped
+      setTimeout(() => {
+        useProjectStore.getState().setPlayheadPosition(0);
+      }, SOFT_STOP_MS * 1000 + 5);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playbackState, playTrigger]);
 
   useEffect(() => {
     return () => {
-      stopAllSources();
+      softStopSources();
       contextRef.current?.close().catch(() => {});
     };
   }, []);

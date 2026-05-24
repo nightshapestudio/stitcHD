@@ -144,7 +144,12 @@ export function RightInspector() {
         {/* Fades */}
         <div className="space-y-4 pt-4 border-t border-border">
           <h4 className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">FADES</h4>
-          <CrossfadeEditor clip={clip} outputDuration={outputDuration} onChange={(u) => updateArrangementClip(clip.id, u)} />
+          <CrossfadeEditor
+            clip={clip}
+            outputDuration={outputDuration}
+            secondsPerBar={bpm > 0 ? (60 / bpm) * 4 : undefined}
+            onChange={(u) => updateArrangementClip(clip.id, u)}
+          />
         </div>
 
         {/* Audio */}
