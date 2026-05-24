@@ -266,10 +266,10 @@ export function Timeline() {
     >
       {/* Ruler */}
       <div
-        className="h-8 bg-[#0b0c10] border-b border-border flex shrink-0 cursor-crosshair select-none relative"
+        className="h-8 bg-[#111111] border-b border-border flex shrink-0 cursor-crosshair select-none relative"
         onClick={handleRulerClick}
       >
-        <div className="w-[100px] shrink-0 border-r border-border bg-[#0b0c10] flex items-center px-2">
+        <div className="w-[100px] shrink-0 border-r border-border bg-[#111111] flex items-center px-2">
           <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">TIMELINE</span>
         </div>
         <div className="flex-1 relative overflow-hidden">
@@ -312,7 +312,7 @@ export function Timeline() {
                   className={`w-[100px] shrink-0 border-r border-border/80 px-2 py-1.5 flex flex-col justify-center cursor-pointer transition-colors select-none ${
                     sourcePlayTrackId === track.id
                       ? 'bg-primary/8 border-r-primary/40'
-                      : 'bg-[#0c0d12] hover:bg-white/5'
+                      : 'bg-[#111111] hover:bg-white/5'
                   }`}
                   onClick={() => selectTrack(track.id)}
                   title="Click to focus this track for source playback"
@@ -344,7 +344,7 @@ export function Timeline() {
                 <div className="flex-1 relative overflow-hidden">
                   <WaveformCanvas
                     waveformData={track.waveformData}
-                    color={track.isReference ? 'hsl(195 70% 48% / 0.7)' : track.color}
+                    color={track.isReference ? 'hsl(258 65% 68% / 0.7)' : track.color}
                     pixelsPerSecond={pixelsPerSecond}
                     scrollOffset={scrollPosition}
                     duration={track.duration}

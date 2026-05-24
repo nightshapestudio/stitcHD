@@ -153,11 +153,11 @@ const PAST_STATES: any[] = [];
 const FUTURE_STATES: any[] = [];
 
 const COLORS = [
-  'hsl(160 60% 45%)',
-  'hsl(200 70% 50%)',
-  'hsl(280 65% 60%)',
-  'hsl(340 75% 55%)',
-  'hsl(176 82% 46%)',
+  'hsl(258 65% 65%)',   // periwinkle
+  'hsl(280 55% 62%)',   // violet
+  'hsl(302 45% 58%)',   // muted fuchsia
+  'hsl(340 60% 55%)',   // deep rose
+  'hsl(222 48% 58%)',   // blue-violet
 ];
 
 export const useProjectStore = create<ProjectState>((set, get) => ({

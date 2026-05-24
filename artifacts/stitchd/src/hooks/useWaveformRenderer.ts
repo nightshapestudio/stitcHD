@@ -56,7 +56,7 @@ export function useWaveformRenderer({
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
         if (i % 4 === 0) {
-          ctx.strokeStyle = 'hsl(176 82% 46% / 0.14)';
+          ctx.strokeStyle = 'hsl(258 50% 62% / 0.11)';
           ctx.lineWidth = 1;
         } else {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';

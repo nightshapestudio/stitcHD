@@ -107,7 +107,7 @@ export function RightInspector() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground">START (s)</Label>
-              <div className="bg-[#0b0c10] border border-border h-7 flex items-center px-2">
+              <div className="bg-[#111111] border border-border h-7 flex items-center px-2">
                 <input 
                   type="number"
                   value={clip.timelinePosition.toFixed(3)}
@@ -119,7 +119,7 @@ export function RightInspector() {
             </div>
             <div className="space-y-1">
               <Label className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground">LENGTH (s)</Label>
-              <div className="bg-[#0b0c10] border border-border h-7 flex items-center px-2">
+              <div className="bg-[#111111] border border-border h-7 flex items-center px-2">
                 <input 
                   type="number"
                   value={clip.sourceDuration.toFixed(3)}
@@ -224,7 +224,7 @@ export function RightInspector() {
               FIT CLIP TO SECTION
             </Label>
             <div className="flex gap-1">
-              <div className="bg-[#0b0c10] border border-border h-7 flex items-center px-2 flex-1">
+              <div className="bg-[#111111] border border-border h-7 flex items-center px-2 flex-1">
                 <input
                   type="number"
                   value={fitTargetDuration}

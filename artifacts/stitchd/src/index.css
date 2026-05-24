@@ -64,51 +64,61 @@
 }
 
 :root, .dark {
-  --background: 218 28% 4%;
-  --foreground: 210 12% 85%;
-  --card: 218 24% 7%;
-  --card-foreground: 210 12% 80%;
-  --card-border: 228 12% 14%;
-  --border: 228 12% 13%;
-  --input: 228 14% 11%;
-  --ring: 176 82% 46%;
-  
-  --primary: 176 82% 46%;
-  --primary-foreground: 228 18% 5%;
-  --primary-border: hsl(176 82% 32%);
-  
-  --secondary: 228 14% 13%;
-  --secondary-foreground: 210 10% 65%;
-  --secondary-border: hsl(228 12% 18%);
-  
-  --muted: 228 14% 10%;
-  --muted-foreground: 210 8% 40%;
-  
-  --accent: 176 82% 46%;
-  --accent-foreground: 228 18% 5%;
-  --accent-border: hsl(176 82% 30%);
-  
+  /* ── Matte black foundation ── */
+  --background: 0 0% 4%;
+  --foreground: 0 0% 84%;
+
+  --card: 0 0% 6%;
+  --card-foreground: 0 0% 80%;
+  --card-border: 0 0% 11%;
+
+  --border: 0 0% 10%;
+  --input: 0 0% 8%;
+  --ring: 258 72% 68%;
+
+  /* ── Purple / periwinkle identity ── */
+  --primary: 258 72% 68%;
+  --primary-foreground: 0 0% 5%;
+  --primary-border: hsl(258 60% 50%);
+
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 58%;
+  --secondary-border: hsl(0 0% 15%);
+
+  --muted: 0 0% 8%;
+  --muted-foreground: 0 0% 37%;
+
+  --accent: 258 72% 68%;
+  --accent-foreground: 0 0% 5%;
+  --accent-border: hsl(258 60% 50%);
+
   --destructive: 4 75% 50%;
-  --destructive-foreground: 210 12% 90%;
-  
-  --popover: 228 15% 8%;
-  --popover-foreground: 210 12% 82%;
-  --popover-border: 228 12% 15%;
-  
-  --sidebar: 218 28% 5%;
-  --sidebar-foreground: 210 10% 75%;
-  --sidebar-border: 228 12% 12%;
-  --sidebar-primary: 176 82% 46%;
-  --sidebar-primary-foreground: 228 18% 5%;
-  --sidebar-accent: 228 14% 11%;
-  --sidebar-accent-foreground: 210 10% 60%;
-  --sidebar-ring: 176 82% 46%;
-  
-  --chart-1: 176 82% 46%;
-  --chart-2: 195 70% 48%;
-  --chart-3: 260 60% 55%;
-  --chart-4: 340 65% 50%;
-  --chart-5: 160 55% 45%;
+  --destructive-foreground: 0 0% 90%;
+
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 82%;
+  --popover-border: 0 0% 13%;
+
+  /* ── Matte black sidebars ── */
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 0 0% 72%;
+  --sidebar-border: 0 0% 9%;
+  --sidebar-primary: 258 72% 68%;
+  --sidebar-primary-foreground: 0 0% 5%;
+  --sidebar-accent: 0 0% 8%;
+  --sidebar-accent-foreground: 0 0% 52%;
+  --sidebar-ring: 258 72% 68%;
+
+  /* ── Chart palette — purple/violet tones ── */
+  --chart-1: 258 72% 65%;
+  --chart-2: 280 58% 60%;
+  --chart-3: 300 48% 56%;
+  --chart-4: 340 62% 52%;
+  --chart-5: 220 52% 56%;
+
+  /* ── Signal color — CYAN ONLY for snap, playhead, transport activity ── */
+  --signal: hsl(176 82% 46%);
+  --signal-dim: hsl(176 70% 32% / 0.7);
 
   --app-font-sans: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --app-font-serif: Georgia, serif;
@@ -127,12 +137,47 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* ── Film grain overlay ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.030;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    animation: grain 0.4s steps(1) infinite;
+  }
+
+  /* ── Atmospheric vignette ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.45) 100%);
+  }
+
+  @keyframes grain {
+    0%   { transform: translate(0, 0); }
+    20%  { transform: translate(-3%, -2%); }
+    40%  { transform: translate(2%, 3%); }
+    60%  { transform: translate(-2%, 1%); }
+    80%  { transform: translate(3%, -1%); }
+    100% { transform: translate(0, 0); }
+  }
+
   ::-webkit-scrollbar { width: 3px; height: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: hsl(228 12% 20%); border-radius: 2px; }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(228 12% 30%); }
+  ::-webkit-scrollbar-thumb { background: hsl(0 0% 18%); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 26%); }
 
-  ::selection { background: hsl(176 82% 46% / 0.22); }
+  ::selection { background: hsl(258 72% 68% / 0.20); }
 }
 
 @layer utilities {

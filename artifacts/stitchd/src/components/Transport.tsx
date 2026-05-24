@@ -65,7 +65,7 @@ export function Transport() {
       <div className="flex items-center justify-center gap-6 w-2/4">
         <div className="flex gap-2 font-mono">
           {/* BARS display — labelled clearly so it is never mistaken for BPM */}
-          <div className="bg-[#0b0c10] border border-border px-3 py-1 flex flex-col items-center justify-center min-w-[130px] shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)]">
+          <div className="bg-[#111111] border border-border px-3 py-1 flex flex-col items-center justify-center min-w-[130px] shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)]">
             <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium -mb-0.5">
               BAR : BEAT : TICK
             </span>
@@ -78,7 +78,7 @@ export function Transport() {
           </div>
 
           {/* TIME display */}
-          <div className="bg-[#0b0c10] border border-border px-3 py-1 flex flex-col items-center justify-center min-w-[100px] shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)]">
+          <div className="bg-[#111111] border border-border px-3 py-1 flex flex-col items-center justify-center min-w-[100px] shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)]">
             <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium -mb-0.5">TIME</span>
             <span className="text-sm text-foreground/90 tracking-wider mt-1">{formatTime(playheadPosition)}</span>
           </div>
@@ -106,7 +106,7 @@ export function Transport() {
           </button>
 
           <button
-            className="w-10 h-10 flex items-center justify-center bg-[#0b0c10] border border-border hover:border-primary/40 hover:bg-white/5 transition-all group relative"
+            className="w-10 h-10 flex items-center justify-center bg-[#111111] border border-border hover:border-primary/40 hover:bg-white/5 transition-all group relative"
             onClick={() => setPlaybackState(playbackState === 'playing' ? 'paused' : 'playing')}
             title="Play / Pause (Space)"
           >
@@ -168,7 +168,7 @@ export function Transport() {
             max={300}
             step={0.5}
             className="w-full bg-transparent font-mono text-primary text-center text-base outline-none leading-none"
-            style={{ textShadow: '0 0 6px hsl(176 82% 46% / 0.5)' }}
+            style={{ textShadow: '0 0 8px hsl(258 72% 68% / 0.5)' }}
           />
         </div>
 

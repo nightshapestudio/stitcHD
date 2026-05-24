@@ -130,7 +130,7 @@ export function ClipBlock({ clip, isSelected, pixelsPerSecond, scrollOffset, hei
   const containerWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
   if (x + w < 0 || x > containerWidth) return null;
 
-  const clipColor = clip.color || 'hsl(195 65% 45%)';
+  const clipColor = clip.color || 'hsl(258 60% 62%)';
   const fadeInPx = clip.fadeIn * pixelsPerSecond;
   const fadeOutPx = clip.fadeOut * pixelsPerSecond;
 

@@ -63,7 +63,7 @@ export function ArrangementLane({ width, height, pixelsPerSecond, scrollOffset }
   return (
     <>
       <div className="h-[120px] flex border-t border-t-primary/20 bg-background mt-4 relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
-        <div className="w-[100px] shrink-0 border-r border-border bg-[#0c0d12] p-2 flex flex-col justify-center relative z-10">
+        <div className="w-[100px] shrink-0 border-r border-border bg-[#111111] p-2 flex flex-col justify-center relative z-10">
           <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">FINAL<br />MIX</span>
           {arrangementClips.length > 0 && (
             <span className="text-[8px] font-mono text-muted-foreground/40 mt-1">{arrangementClips.length} clip{arrangementClips.length !== 1 ? 's' : ''}</span>
@@ -146,7 +146,7 @@ export function ArrangementLane({ width, height, pixelsPerSecond, scrollOffset }
             onPointerDown={closeMenu}
           />
           <div
-            className="fixed z-[101] bg-[#0e0f14] border border-border shadow-xl min-w-[160px] py-1"
+            className="fixed z-[101] bg-[#101010] border border-border shadow-xl min-w-[160px] py-1"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <button

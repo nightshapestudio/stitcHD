@@ -1,0 +1,193 @@
+URGENT VISUAL DIRECTION CORRECTION.
+
+The app has drifted too far into:
+- cyan
+- dark blue
+- generic “tech editor” energy
+
+That is NOT the intended look.
+
+====================================================
+NEW VISUAL FOUNDATION
+====================================================
+
+The app should feel:
+
+- matte black
+- brutalist
+- cinematic
+- tactile
+- industrial
+- high contrast
+- restrained
+- premium
+- emotionally heavy
+
+NOT:
+- neon cyberpunk
+- blue dashboard
+- SaaS
+- glowing sci-fi UI
+- bright cyan everywhere
+
+====================================================
+PRIMARY STRUCTURE COLORS
+====================================================
+
+The actual UI foundation should be NEUTRAL matte blacks and dark greys.
+
+Use these heavily:
+
+True black:
+#000000
+
+Matte black:
+#0A0A0A
+
+Soft matte:
+#111111
+
+Panel black:
+#151515
+
+Raised surface:
+#1B1B1B
+
+Divider grey:
+#262626
+
+Text grey:
+#A1A1AA
+
+Muted text:
+#71717A
+
+====================================================
+PURPLE / PERIWINKLE ATMOSPHERE
+====================================================
+
+Purple should become the emotional identity layer.
+
+Primary purple:
+#5632B4
+
+Deep indigo:
+#2C1B61
+
+Periwinkle:
+#A89BFF
+
+Electric periwinkle:
+#7B61FF
+
+Muted lavender:
+#8C85A3
+
+Fuchsia-violet accent:
+#9D4EDD
+
+Dark violet glow:
+#3A1E78
+
+Use purple/periwinkle for:
+- selection depth
+- active states
+- arrangement emphasis
+- waveform glow accents
+- section labels
+- subtle edge glows
+- focused clip states
+- timeline atmosphere
+
+====================================================
+CYAN RULE
+====================================================
+
+Cyan is now ONLY for:
+- snap indicators
+- playhead signal
+- temporary interaction feedback
+- transport activity
+- precision indicators
+
+It should feel like:
+signal/current/electricity
+
+NOT:
+the entire app color identity.
+
+Reduce cyan usage dramatically.
+
+====================================================
+REMOVE DARK BLUE
+====================================================
+
+Remove the navy/blue-heavy surfaces.
+
+No more:
+- dark blue panels
+- blue-tinted backgrounds
+- dashboard blue gradients
+
+Replace them with:
+- neutral matte black
+- charcoal
+- graphite
+- restrained violet depth
+
+====================================================
+FILM / TEXTURE
+====================================================
+
+Add subtle:
+- film grain
+- soft matte texture
+- restrained bloom
+- atmospheric vignette
+
+Keep it:
+- subtle
+- premium
+- low contrast
+- cinematic
+
+No noisy overlays.
+
+====================================================
+WAVEFORM STYLE
+====================================================
+
+Waveforms should:
+- sit naturally in the dark UI
+- use restrained contrast
+- use subtle purple/lavender emphasis
+- reserve cyan for:
+  - selection
+  - transient targeting
+  - snap alignment
+  - active seam audition
+
+====================================================
+OVERALL EMOTIONAL TARGET
+====================================================
+
+The app should feel like:
+
+- a mastering suite
+- a film-editing workstation
+- a brutalist audio lab
+- an industrial reconstruction tool
+
+NOT:
+- a coding app
+- a browser dashboard
+- a music toy
+- a neon gamer UI
+
+====================================================
+PRIORITY
+====================================================
+
+Do this visual correction NOW before adding more systems.
+
+The current visual drift is moving the app away from its intended identity.

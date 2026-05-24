@@ -35,7 +35,7 @@ export function BeatGrid({ width, height, bpm, zoom, scrollOffset, visibleDurati
           y1={0}
           x2={x}
           y2={height}
-          stroke={isBar ? 'hsl(176 82% 46% / 0.12)' : 'hsl(220 13% 50% / 0.07)'}
+          stroke={isBar ? 'hsl(258 50% 62% / 0.10)' : 'rgba(255,255,255,0.045)'}
           strokeWidth={isBar ? 1 : 0.5}
         />
       );

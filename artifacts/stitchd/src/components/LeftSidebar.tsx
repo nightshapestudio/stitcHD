@@ -118,7 +118,7 @@ export function LeftSidebar() {
 
           <div className="grid grid-cols-2 gap-2">
             <div className="relative">
-              <div className={`bg-[#0b0c10] border h-9 flex items-center justify-center ${
+              <div className={`bg-[#111111] border h-9 flex items-center justify-center ${
                 bpmSource === 'auto' ? 'border-primary/40' : 'border-border'
               }`}>
                 <input
