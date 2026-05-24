@@ -1,0 +1,71 @@
+Not yet. Do not add nudge seam right now.
+
+First, create/update STITCHD_STATUS.txt with the latest completed milestone so the current state is preserved.
+
+Add this milestone:
+
+====================================================
+LATEST MILESTONE:
+WORKFLOW HARDENING PASS
+====================================================
+
+Implemented and confirmed clean:
+
+Snap-to-grid:
+- SnapResolution type added.
+- snapUtils.ts added with snapPosition and snapForward.
+- snapForward includes 1ms epsilon to prevent floating-point boundary drift.
+- Cyan snap guide appears during drag.
+- Shift inverts snap behavior in Segment/Pointer/Trim tools.
+- Snap resolution options: Bar, Beat, 1/2, 1/4.
+- Snap controls live in LeftSidebar.
+
+Source-only playback:
+- When arrangement is empty, Play falls through:
+  1. selected/focused track
+  2. reference track
+  3. first imported track
+- Tick loop auto-stops at source end.
+- Users can now press Play before adding arrangement clips.
+
+Audio engine hardening:
+- Stop/pause now uses 20ms gain ramp to prevent hard-cut clicks.
+- Source node starts now use 4ms anti-click ramp-in.
+- Loop restart uses 10ms crossfade.
+- safeScaledFades helper scales fade-in/out when their sum exceeds clip duration.
+- Live playback fade scaling now matches WAV export logic.
+
+Track click-to-select:
+- Clicking a track label in Timeline focuses it for source-only playback.
+- Focused source track shows ▶ SRC badge.
+- Focused source track has subtle visual highlight.
+- Visual priority matches playback priority.
+
+Crossfade UX:
+- CrossfadeEditor now includes 1 BAR preset.
+- 1B preset appears when BPM is set.
+- 1B computes (60 / bpm) * 4 seconds.
+- Value clamps to clip duration.
+- RightInspector passes secondsPerBar to CrossfadeEditor.
+
+Validation:
+- TypeScript check passed with zero errors.
+- App runs clean after HMR restart.
+
+====================================================
+CURRENT NEXT PRIORITIES
+====================================================
+
+Next, test the real workflow before adding new features:
+
+1. import one track and press Play
+2. import two tracks and select/audition each
+3. verify snap behavior while dragging/trimming
+4. append several segments and check for timing gaps
+5. replace a selected clip and verify snapped slot is preserved
+6. seam audition repeated playback
+7. export snapped/replaced arrangement and compare timing
+
+Do not add nudge seam until this workflow is tested.
+
+After status file is updated, checkpoint/save/download project ZIP.

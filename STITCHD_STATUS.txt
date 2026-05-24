@@ -1,5 +1,57 @@
 ====================================================
+STITCHD STATUS FILE
+====================================================
+
+====================================================
 LATEST MILESTONE:
+WORKFLOW HARDENING PASS
+====================================================
+
+Implemented and confirmed clean:
+
+Snap-to-grid:
+- SnapResolution type added.
+- snapUtils.ts added with snapPosition and snapForward.
+- snapForward includes 1ms epsilon to prevent floating-point boundary drift.
+- Cyan snap guide appears during drag.
+- Shift inverts snap behavior in Segment/Pointer/Trim tools.
+- Snap resolution options: Bar, Beat, 1/2, 1/4.
+- Snap controls live in LeftSidebar.
+
+Source-only playback:
+- When arrangement is empty, Play falls through:
+  1. selected/focused track
+  2. reference track
+  3. first imported track
+- Tick loop auto-stops at source end.
+- Users can now press Play before adding arrangement clips.
+
+Audio engine hardening:
+- Stop/pause now uses 20ms gain ramp to prevent hard-cut clicks.
+- Source node starts now use 4ms anti-click ramp-in.
+- Loop restart uses 10ms crossfade.
+- safeScaledFades helper scales fade-in/out when their sum exceeds clip duration.
+- Live playback fade scaling now matches WAV export logic.
+
+Track click-to-select:
+- Clicking a track label in Timeline focuses it for source-only playback.
+- Focused source track shows a SRC badge.
+- Focused source track has subtle visual highlight.
+- Visual priority matches playback priority.
+
+Crossfade UX:
+- CrossfadeEditor now includes 1 BAR preset.
+- 1B preset appears when BPM is set.
+- 1B computes (60 / bpm) * 4 seconds.
+- Value clamps to clip duration.
+- RightInspector passes secondsPerBar to CrossfadeEditor.
+
+Validation:
+- TypeScript check passed with zero errors.
+- App runs clean after HMR restart.
+
+====================================================
+PREVIOUS MILESTONE:
 SOURCE PLAYBACK + SNAP TO GRID
 ====================================================
 
@@ -18,11 +70,7 @@ Playback scope fix:
 Snap-to-grid:
 - Global snap toggle added.
 - Snap defaults ON.
-- Snap resolution added:
-  - Bar
-  - Beat
-  - 1/2 beat
-  - 1/4 beat
+- Snap resolution added: Bar, Beat, 1/2 beat, 1/4 beat.
 
 New shared utility:
 - src/lib/snapUtils.ts
@@ -32,67 +80,78 @@ Added helpers:
 - snapForward(pos, bpm, snapEnabled, resolution)
 
 Store additions:
-- snapEnabled
-- snapResolution
-- snapGuidePosition
-- related setter actions
+- snapEnabled, snapResolution, snapGuidePosition, related setter actions
 
 UI:
-- LeftSidebar now includes SNAP ON/OFF toggle.
-- Resolution dropdown added.
+- LeftSidebar: SNAP ON/OFF toggle + resolution dropdown.
 - Note added that Shift inverts snap behavior during drag.
 
 Clip drag/trim:
-- ClipBlock drag now uses shared snap utilities.
-- Move, trim-left, and trim-right all snap through snapPosition.
+- ClipBlock drag uses shared snap utilities.
+- Move, trim-left, trim-right all snap through snapPosition.
 - Shift key inverts global snap toggle.
 - Drag emits snapGuidePosition into store.
 
 Timeline:
-- Timeline reads snapGuidePosition.
+- Reads snapGuidePosition.
 - Renders subtle cyan vertical snap guide line with glow.
 - Guide disappears on pointer-up.
-- Append insert positions use snapForward to land on next clean grid boundary.
+- Append insert positions use snapForward for clean grid boundaries.
 
 Validation:
-- App restarted cleanly after transient HMR hook-order warning.
 - TypeScript check passed with zero errors.
 
-NO PITCH DRIFT rule:
-- unchanged and preserved.
-- Stretch behavior remains labelled DRAFT ONLY / changes pitch.
-
 ====================================================
-CURRENT CORE WORKFLOW
+CURRENT NEXT PRIORITIES
 ====================================================
 
-Current working loop:
+Next, test the real workflow before adding new features:
 
-1. import tracks
-2. detect BPM
-3. play source tracks immediately
-4. segment tracks
-5. append/replace sections
-6. snap to grid
-7. seam audition
-8. adjust fades
-9. export WAV
+1. Import one track and press Play
+2. Import two tracks and select/audition each
+3. Verify snap behavior while dragging/trimming
+4. Append several segments and check for timing gaps
+5. Replace a selected clip and verify snapped slot is preserved
+6. Seam audition repeated playback
+7. Export snapped/replaced arrangement and compare timing
+
+Do not add nudge seam until this workflow is tested.
 
 ====================================================
-CURRENT PRIORITY
+DO NOT ADD
 ====================================================
 
-Do NOT add:
-- waveform seam AI
-- BPM tap overlays
-- AI analysis
-- SaaS/cloud systems
-- mobile layouts
-- unrelated feature creep
+- Waveform seam AI
+- BPM tap overlays / AI analysis
+- SaaS / cloud / auth systems
+- Mobile layouts
+- Nudge seam (until workflow testing complete)
+- Any unrelated feature creep
 
-Focus now on:
-- workflow testing
-- seam quality
-- export reliability
-- editor feel
-- real-world song reconstruction
+====================================================
+ARCHITECTURE NOTES
+====================================================
+
+- STITCHD is entirely client-side: Web Audio API, Canvas, Zustand, no DB or API server.
+- NO PITCH DRIFT RULE: playbackRate-based time stretch must always be labeled
+  "DRAFT ONLY - changes pitch" in the UI. Non-negotiable.
+- Clip arrangement lane uses pointer capture API for smooth drag.
+- WAV export uses OfflineAudioContext at 44.1 kHz or 48 kHz, 16-bit PCM stereo.
+- Beat grid snapping uses Shift key modifier on drag operations.
+- vite.config.ts uses dedupe for react, react-dom, zustand.
+
+====================================================
+KEY FILES
+====================================================
+
+artifacts/stitchd/src/hooks/useAudioEngine.ts       - Web Audio engine + WAV renderer
+artifacts/stitchd/src/store/useProjectStore.ts      - Zustand store (source of truth)
+artifacts/stitchd/src/components/StitchdEditor.tsx  - Top-level layout
+artifacts/stitchd/src/components/Timeline.tsx       - Track rows + waveform view
+artifacts/stitchd/src/components/ArrangementLane.tsx - Clip drag/drop lane
+artifacts/stitchd/src/components/ClipBlock.tsx      - Individual clip move/trim/split
+artifacts/stitchd/src/components/RightInspector.tsx - Clip properties panel
+artifacts/stitchd/src/components/CrossfadeEditor.tsx - Fade in/out + 1B preset
+artifacts/stitchd/src/components/LeftSidebar.tsx    - BPM, snap controls, tools
+artifacts/stitchd/src/lib/snapUtils.ts              - snapPosition + snapForward
+artifacts/stitchd/src/types/audio.ts               - All TypeScript types
