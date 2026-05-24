@@ -30,140 +30,152 @@ Single-track repair philosophy:
 - NOT crude global speed change or pitch-altering playbackRate stretch
 
 ====================================================
+CURRENT DIRECTIVE:
+REAL-WORLD RECONSTRUCTION TESTING
+====================================================
+
+The app now has enough core systems to evaluate.
+DO NOT ADD NEW FEATURES until real-world testing surfaces actual pain points.
+
+Testing workflow to run:
+
+1. Import multiple related tracks
+2. Audition source tracks (source-only playback, track click-to-select)
+3. Assign section labels (INT / VRS / PRE / CHR / BRG / BKD / OUT)
+4. Replace sections (stamp clips, snap to grid)
+5. Snap to grid (bar/beat snapping, shift to invert)
+6. Seam audition (loop seam, audition boundary)
+7. Fade adjustment (fade in/out presets, 1B bar preset, curve select)
+8. Export final WAV (44.1 or 48 kHz, 16-bit PCM stereo)
+
+Use real drifting/imperfect tracks.
+Evaluate: editing speed, seam quality, timing stability, replacement workflow, reconstruction ergonomics.
+
+====================================================
 LATEST MILESTONE:
-WORKFLOW HARDENING PASS
+SECTION LABELS
 ====================================================
 
 Implemented and confirmed clean:
 
-Snap-to-grid:
-- SnapResolution type added.
-- snapUtils.ts added with snapPosition and snapForward.
-- snapForward includes 1ms epsilon to prevent floating-point boundary drift.
-- Cyan snap guide appears during drag.
-- Shift inverts snap behavior in Segment/Pointer/Trim tools.
-- Snap resolution options: Bar, Beat, 1/2, 1/4.
-- Snap controls live in LeftSidebar.
+Data model:
+- SectionLabel union type: intro | verse | pre | chorus | bridge | breakdown | outro
+- sectionLabel?: SectionLabel added to Clip interface
+- Serializes automatically in .stitchd project files
+- Designed for future: section matching, quantize, timing repair, one-click replacement
 
-Source-only playback:
-- When arrangement is empty, Play falls through:
-  1. selected/focused track
-  2. reference track
-  3. first imported track
-- Tick loop auto-stops at source end.
-- Users can now press Play before adding arrangement clips.
+Constants:
+- src/lib/sectionLabels.ts: SECTION_LABELS array + getSectionShort / getSectionFull helpers
+- Shared between ClipBlock and RightInspector — single source of truth
 
-Audio engine hardening:
-- Stop/pause now uses 20ms gain ramp to prevent hard-cut clicks.
-- Source node starts now use 4ms anti-click ramp-in.
-- Loop restart uses 10ms crossfade.
-- safeScaledFades helper scales fade-in/out when their sum exceeds clip duration.
-- Live playback fade scaling now matches WAV export logic.
+ClipBlock header:
+- 3-letter abbreviation (INT/VRS/PRE/CHR/BRG/BKD/OUT) appears left-aligned in dim cyan
+- Free-text clip label shifts right and dims when section label is set
+- No label set: original single-line layout unchanged
 
-Track click-to-select:
-- Clicking a track label in Timeline focuses it for source-only playback.
-- Focused source track shows a SRC badge.
-- Focused source track has subtle visual highlight.
-- Visual priority matches playback priority.
-
-Crossfade UX:
-- CrossfadeEditor now includes 1 BAR preset.
-- 1B preset appears when BPM is set.
-- 1B computes (60 / bpm) * 4 seconds.
-- Value clamps to clip duration.
-- RightInspector passes secondsPerBar to CrossfadeEditor.
+RightInspector:
+- Seven compact buttons between label input and SRC line
+- One click assigns; clicking active label clears it
+- Active: cyan border + tinted fill
+- Inactive: dim border, hover highlight
 
 Validation:
 - TypeScript check passed with zero errors.
-- App runs clean after HMR restart.
+- App runs clean.
+
+====================================================
+PREVIOUS MILESTONE:
+WORKFLOW HARDENING PASS
+====================================================
+
+Snap-to-grid:
+- SnapResolution type added.
+- snapUtils.ts: snapPosition and snapForward with 1ms epsilon.
+- Cyan snap guide during drag. Shift inverts snap.
+- Snap options: Bar, Beat, 1/2, 1/4. Controls in LeftSidebar.
+
+Source-only playback:
+- Play falls through: selected -> reference -> first track.
+- Tick loop auto-stops at source end.
+- Users can press Play before adding arrangement clips.
+
+Audio engine hardening:
+- 20ms soft stop gain ramp (no hard-cut clicks).
+- 4ms anti-click ramp-in on source starts.
+- 10ms loop crossfade.
+- safeScaledFades: live playback fade scaling matches WAV export logic.
+
+Track click-to-select:
+- Clicking track label focuses it for source-only playback.
+- Focused source track shows SRC badge + subtle highlight.
+- Visual priority matches playback priority.
+
+Crossfade UX:
+- CrossfadeEditor: 1B preset when BPM is set.
+- 1B = (60 / bpm) * 4 seconds, clamped to clip duration.
 
 ====================================================
 PREVIOUS MILESTONE:
 SOURCE PLAYBACK + SNAP TO GRID
 ====================================================
 
-Implemented and confirmed clean:
-
-Playback scope fix:
-- useAudioEngine.ts now detects when the arrangement lane is empty.
-- If no arrangement clips exist, Play falls back to source-track playback.
-- Playback source priority: selected -> reference -> first imported.
-- Tick loop auto-stops when source track ends.
-- Play/Stop now work before arrangement clips are added.
-
-Snap-to-grid:
-- Global snap toggle added, defaults ON.
-- Snap resolution: Bar, Beat, 1/2 beat, 1/4 beat.
-- src/lib/snapUtils.ts: snapPosition and snapForward helpers.
-- Store additions: snapEnabled, snapResolution, snapGuidePosition.
-- LeftSidebar: SNAP ON/OFF toggle + resolution dropdown.
-- ClipBlock: move/trim-left/trim-right all snap through snapPosition.
-- Shift key inverts global snap toggle.
-- Timeline renders cyan vertical snap guide line with glow.
-- Append insert positions use snapForward for clean grid boundaries.
-
-Validation: TypeScript check passed with zero errors.
+Source-only playback when arrangement is empty.
+Snap-to-grid with global toggle, resolution, and visual guide.
+snapUtils.ts: snapPosition + snapForward.
+ClipBlock: move/trim/trim-right all snap through snapPosition.
+Timeline: append positions use snapForward.
 
 ====================================================
-CURRENT NEXT PRIORITIES
+POSSIBLE FUTURE ADDITIONS
+(evaluate only after real-world testing)
 ====================================================
 
-Test the real workflow before adding new features:
-
-1. Import one track and press Play
-2. Import two tracks and select/audition each
-3. Verify snap behavior while dragging/trimming
-4. Append several segments and check for timing gaps
-5. Replace a selected clip and verify snapped slot is preserved
-6. Seam audition repeated playback
-7. Export snapped/replaced arrangement and compare timing
-
-Do not add nudge seam until this workflow is tested.
+- Section filtering (dim clips not matching selected section)
+- Smart snap / transient-aware snapping
+- Keyboard editing shortcuts
+- Section matching between tracks
+- One-click section replacement
+- Nudge seam (blocked until workflow test pass)
 
 ====================================================
 LONG-TERM SINGLE-TRACK REPAIR ROADMAP
 ====================================================
 
-Future capabilities — requires pitch-preserving engine (not playbackRate):
+Requires pitch-preserving engine (not playbackRate):
 
 - Local tempo smoothing and micro time-warping
 - Beat/transient alignment per section
-- Transient-aware quantization:
-  - strength control
-  - grid resolution control
-  - repair modes: Tight / Natural / Transparent
+- Transient-aware quantization (Tight / Natural / Transparent)
 - Region-based timing correction for per-section drift
 - Automatic low-impact cut detection
 - Micro crossfades at edit points
-- Silence tightening
-- Local drift compensation
+- Silence tightening and local drift compensation
 - Section detection within a single song
 
 ====================================================
-DO NOT ADD (until testing complete or specified)
+DO NOT ADD
 ====================================================
 
-- Nudge seam (blocked until workflow test pass)
+- Waveform diff view
 - Waveform seam AI / AI analysis
 - BPM tap overlays
+- Metadata systems / organizational feature creep
 - SaaS / cloud / auth systems
 - Mobile layouts
 - Global playbackRate stretch presented as pitch-preserving
-- Any unrelated feature creep
 
 ====================================================
 NO PITCH DRIFT RULE — NON-NEGOTIABLE
 ====================================================
 
-- playbackRate-based time stretch must always be labeled "DRAFT ONLY - changes pitch"
-- Do NOT use playbackRate as a real repair solution
-- Current stretch slider must remain DRAFT ONLY until a true pitch-preserving engine exists
+- playbackRate-based stretch must always be labeled "DRAFT ONLY - changes pitch"
+- Current stretch slider stays DRAFT ONLY until a true pitch-preserving engine exists
 
 ====================================================
 ARCHITECTURE NOTES
 ====================================================
 
-- STITCHD is entirely client-side: Web Audio API, Canvas, Zustand, no DB or API server.
+- Entirely client-side: Web Audio API, Canvas, Zustand, no DB or API server.
 - Clip arrangement lane uses pointer capture API for smooth drag.
 - WAV export uses OfflineAudioContext at 44.1 kHz or 48 kHz, 16-bit PCM stereo.
 - Beat grid snapping uses Shift key modifier on drag operations.
@@ -183,4 +195,5 @@ artifacts/stitchd/src/components/RightInspector.tsx - Clip properties panel
 artifacts/stitchd/src/components/CrossfadeEditor.tsx - Fade in/out + 1B preset
 artifacts/stitchd/src/components/LeftSidebar.tsx    - BPM, snap controls, tools
 artifacts/stitchd/src/lib/snapUtils.ts              - snapPosition + snapForward
+artifacts/stitchd/src/lib/sectionLabels.ts          - SECTION_LABELS constants + helpers
 artifacts/stitchd/src/types/audio.ts               - All TypeScript types
