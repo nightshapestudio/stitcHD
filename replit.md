@@ -1,6 +1,16 @@
 # NIGHTSHAPE STITCHD
 
-Browser-based audio repair editor for AI-generated music — import multiple song versions, align them on a timeline, and replace broken sections with clean ones.
+Browser-based audio repair editor — fix timing drift and reconstruct songs from multiple versions entirely in the browser.
+
+## Product Identity: Two Core Modes
+
+### Mode 1 — Multi-Track Reconstruction
+Import multiple versions of a song (or stems), align them on a shared timeline, and replace broken/weak sections with clean ones from alternate versions. Build a Frankenstein master from the best parts.
+
+### Mode 2 — Single-Track Tempo Repair
+Import one track, detect BPM, generate a beat/bar grid, segment the song into sections, and tighten timing drift across the arrangement. Repair inconsistent pacing without pitch change, preserving feel, groove, transients, and vocal quality.
+
+Both modes are equally core to the product. Neither is secondary.
 
 ## Run & Operate
 
@@ -39,15 +49,27 @@ Browser-based audio repair editor for AI-generated music — import multiple son
 - Clip arrangement lane uses pointer capture API for smooth drag without losing events.
 - WAV export renders the arrangement via an OfflineAudioContext at the target sample rate.
 
-## Product
+## Current Features
 
 - **Import**: Drag & drop WAV/MP3/M4A/AIFF files; each becomes a track with decoded waveform
 - **Align**: Set BPM manually or tap-to-detect; beat grid overlaid on all waveforms
 - **Segment**: Click waveform to stamp a clip into the Arrangement Lane (8-bar, 4-bar, 2-bar, custom)
-- **Edit**: Move/trim/split/duplicate clips; fade in/out with preset ms buttons; nudge offset
+- **Snap**: Bar/Beat/½/¼ grid snapping with cyan guide line; Shift inverts snap toggle
+- **Edit**: Move/trim/split/duplicate clips; fade in/out with ms presets + 1-bar preset; nudge offset
 - **Audition**: "Audition Seam" loops ±2 bars around a clip boundary for seam verification
 - **Export**: Render arrangement to WAV (44.1 kHz or 48 kHz, 16-bit PCM stereo)
 - **Project**: Save/load `.stitchd` session files (audio re-imported by filename on load)
+- **Source playback**: Play falls back to source track when no arrangement clips exist
+
+## Long-Term Single-Track Repair Roadmap
+
+Future capabilities (not yet implemented — pitch-preserving engine required):
+- Local tempo smoothing and micro time-warping
+- Beat/transient alignment per section
+- Transient-aware quantization with strength/style controls (Tight / Natural / Transparent)
+- Region-based timing correction for per-section drift
+- Automatic low-impact cut detection with micro crossfades
+- Silence tightening and local drift compensation
 
 ## User preferences
 

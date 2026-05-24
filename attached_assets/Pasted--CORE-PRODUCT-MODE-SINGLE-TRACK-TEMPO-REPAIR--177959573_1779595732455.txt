@@ -1,0 +1,133 @@
+====================================================
+CORE PRODUCT MODE:
+SINGLE-TRACK TEMPO REPAIR
+====================================================
+
+STITCHD must fully support repairing and tightening ONE track without requiring alternate versions.
+
+This is not a secondary workflow.
+It is a core product mode.
+
+A user should be able to:
+
+1. import one track
+2. detect average BPM
+3. generate a beat/bar grid
+4. smooth timing drift
+5. quantize sections to the grid
+6. repair loose/off-time regions
+7. create consistent timing across the entire song
+8. export a tightened final WAV
+
+without importing any additional tracks.
+
+====================================================
+SINGLE-TRACK REPAIR PHILOSOPHY
+====================================================
+
+The goal:
+make one inconsistent track rhythmically stable while preserving:
+- pitch
+- feel
+- groove
+- transients
+- vocal quality
+
+The app should behave more like:
+- intelligent tempo conforming
+- timing repair
+- micro-surgery
+
+NOT:
+- crude global speed change
+- pitch-changing playbackRate stretch
+
+====================================================
+LONG-TERM SINGLE-TRACK REPAIR TOOLS
+====================================================
+
+Future repair behavior may include:
+- local tempo smoothing
+- beat/transient alignment
+- micro time-warping
+- transient-aware quantization
+- region-based timing correction
+- automatic low-impact cut detection
+- micro crossfades
+- transient-safe edits
+- silence tightening
+- local drift compensation
+
+====================================================
+SECTION-BASED TIMING REPAIR
+====================================================
+
+The app should eventually support:
+- detecting sections in a single song
+- aligning each section to a stable timing grid
+- correcting local drift independently per section
+
+Example:
+- verse slightly slow
+- chorus slightly rushed
+- bridge drifts late
+
+STITCHD should eventually help normalize these sections while preserving musicality.
+
+====================================================
+QUANTIZE MODE
+====================================================
+
+Future workflow goal:
+
+User selects:
+- a clip
+- a section
+- or entire track
+
+Then chooses:
+- strength
+- grid resolution
+- repair mode
+
+Example:
+- Tight
+- Natural
+- Transparent
+
+The app then:
+- aligns timing toward the grid
+- preserves pitch
+- minimizes artifacts
+- preserves groove where possible
+
+====================================================
+NO PITCH DRIFT RULE
+====================================================
+
+Pitch preservation remains mandatory.
+
+Do NOT use playbackRate as a real repair solution.
+
+Current playbackRate implementation must remain:
+"DRAFT ONLY — changes pitch"
+
+until a true pitch-preserving engine exists.
+
+====================================================
+IMPORTANT PRODUCT IDENTITY
+====================================================
+
+STITCHD has TWO equally important modes:
+
+1. Multi-track reconstruction
+- replace sections between song versions
+- build Frankenstein masters
+
+2. Single-track tempo repair
+- stabilize one drifting song
+- tighten timing
+- align sections to grid
+- repair inconsistent pacing
+
+Both workflows are core to the product.

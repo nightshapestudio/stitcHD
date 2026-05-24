@@ -3,6 +3,33 @@ STITCHD STATUS FILE
 ====================================================
 
 ====================================================
+PRODUCT IDENTITY
+====================================================
+
+STITCHD has TWO equally core modes. Neither is secondary.
+
+MODE 1 — MULTI-TRACK RECONSTRUCTION
+- Import multiple versions of a song or stems
+- Align on a shared timeline
+- Replace broken/weak sections with clean ones from alternate versions
+- Build a Frankenstein master from the best parts
+
+MODE 2 — SINGLE-TRACK TEMPO REPAIR
+- Import one track
+- Detect average BPM
+- Generate a beat/bar grid
+- Segment the song into sections
+- Tighten timing drift across the arrangement
+- Repair inconsistent pacing section by section
+- Export a tightened final WAV
+- No additional tracks required
+
+Single-track repair philosophy:
+- Preserve pitch, feel, groove, transients, vocal quality
+- Behave like intelligent tempo conforming and timing micro-surgery
+- NOT crude global speed change or pitch-altering playbackRate stretch
+
+====================================================
 LATEST MILESTONE:
 WORKFLOW HARDENING PASS
 ====================================================
@@ -60,52 +87,28 @@ Implemented and confirmed clean:
 Playback scope fix:
 - useAudioEngine.ts now detects when the arrangement lane is empty.
 - If no arrangement clips exist, Play falls back to source-track playback.
-- Playback source priority:
-  1. selected track
-  2. reference / MASTER track
-  3. first imported track
+- Playback source priority: selected -> reference -> first imported.
 - Tick loop auto-stops when source track ends.
 - Play/Stop now work before arrangement clips are added.
 
 Snap-to-grid:
-- Global snap toggle added.
-- Snap defaults ON.
-- Snap resolution added: Bar, Beat, 1/2 beat, 1/4 beat.
-
-New shared utility:
-- src/lib/snapUtils.ts
-
-Added helpers:
-- snapPosition(pos, bpm, snapEnabled, resolution, shiftHeld)
-- snapForward(pos, bpm, snapEnabled, resolution)
-
-Store additions:
-- snapEnabled, snapResolution, snapGuidePosition, related setter actions
-
-UI:
+- Global snap toggle added, defaults ON.
+- Snap resolution: Bar, Beat, 1/2 beat, 1/4 beat.
+- src/lib/snapUtils.ts: snapPosition and snapForward helpers.
+- Store additions: snapEnabled, snapResolution, snapGuidePosition.
 - LeftSidebar: SNAP ON/OFF toggle + resolution dropdown.
-- Note added that Shift inverts snap behavior during drag.
-
-Clip drag/trim:
-- ClipBlock drag uses shared snap utilities.
-- Move, trim-left, trim-right all snap through snapPosition.
+- ClipBlock: move/trim-left/trim-right all snap through snapPosition.
 - Shift key inverts global snap toggle.
-- Drag emits snapGuidePosition into store.
-
-Timeline:
-- Reads snapGuidePosition.
-- Renders subtle cyan vertical snap guide line with glow.
-- Guide disappears on pointer-up.
+- Timeline renders cyan vertical snap guide line with glow.
 - Append insert positions use snapForward for clean grid boundaries.
 
-Validation:
-- TypeScript check passed with zero errors.
+Validation: TypeScript check passed with zero errors.
 
 ====================================================
 CURRENT NEXT PRIORITIES
 ====================================================
 
-Next, test the real workflow before adding new features:
+Test the real workflow before adding new features:
 
 1. Import one track and press Play
 2. Import two tracks and select/audition each
@@ -118,23 +121,49 @@ Next, test the real workflow before adding new features:
 Do not add nudge seam until this workflow is tested.
 
 ====================================================
-DO NOT ADD
+LONG-TERM SINGLE-TRACK REPAIR ROADMAP
 ====================================================
 
-- Waveform seam AI
-- BPM tap overlays / AI analysis
+Future capabilities — requires pitch-preserving engine (not playbackRate):
+
+- Local tempo smoothing and micro time-warping
+- Beat/transient alignment per section
+- Transient-aware quantization:
+  - strength control
+  - grid resolution control
+  - repair modes: Tight / Natural / Transparent
+- Region-based timing correction for per-section drift
+- Automatic low-impact cut detection
+- Micro crossfades at edit points
+- Silence tightening
+- Local drift compensation
+- Section detection within a single song
+
+====================================================
+DO NOT ADD (until testing complete or specified)
+====================================================
+
+- Nudge seam (blocked until workflow test pass)
+- Waveform seam AI / AI analysis
+- BPM tap overlays
 - SaaS / cloud / auth systems
 - Mobile layouts
-- Nudge seam (until workflow testing complete)
+- Global playbackRate stretch presented as pitch-preserving
 - Any unrelated feature creep
+
+====================================================
+NO PITCH DRIFT RULE — NON-NEGOTIABLE
+====================================================
+
+- playbackRate-based time stretch must always be labeled "DRAFT ONLY - changes pitch"
+- Do NOT use playbackRate as a real repair solution
+- Current stretch slider must remain DRAFT ONLY until a true pitch-preserving engine exists
 
 ====================================================
 ARCHITECTURE NOTES
 ====================================================
 
 - STITCHD is entirely client-side: Web Audio API, Canvas, Zustand, no DB or API server.
-- NO PITCH DRIFT RULE: playbackRate-based time stretch must always be labeled
-  "DRAFT ONLY - changes pitch" in the UI. Non-negotiable.
 - Clip arrangement lane uses pointer capture API for smooth drag.
 - WAV export uses OfflineAudioContext at 44.1 kHz or 48 kHz, 16-bit PCM stereo.
 - Beat grid snapping uses Shift key modifier on drag operations.
