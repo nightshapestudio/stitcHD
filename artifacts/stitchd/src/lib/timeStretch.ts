@@ -92,13 +92,24 @@ export function clearStretchCache() {
   pending.clear();
 }
 
-/** Conform native track tempo to project grid BPM (pitch-preserving stretch ratio). */
+/**
+ * Conform native track tempo to project tempo. Returns the pitch-preserving
+ * stretch ratio in the SoundTouch convention used by `getTimeStretchedSlice`:
+ *   ratio > 1  → output is faster and shorter
+ *   ratio < 1  → output is slower and longer
+ *
+ * Therefore: project tempo HIGHER than source ⇒ ratio > 1 ⇒ faster.
+ *            project tempo LOWER than source  ⇒ ratio < 1 ⇒ slower.
+ *
+ * Formula is projectBpm / estimatedBpm (NOT the inverse — that bug shipped
+ * briefly and made BPM changes feel reversed).
+ */
 export function conformTempoRatio(
   estimatedBpm: number | null | undefined,
   projectBpm: number,
 ): number {
   if (!estimatedBpm || estimatedBpm <= 0 || projectBpm <= 0) return 1;
-  return Math.max(0.25, Math.min(4, estimatedBpm / projectBpm));
+  return Math.max(0.25, Math.min(4, projectBpm / estimatedBpm));
 }
 
 export function stretchedTimelineDuration(sourceDuration: number, tempoRatio: number): number {

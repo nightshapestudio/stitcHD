@@ -7,6 +7,13 @@ import { snapForward } from '../lib/snapUtils';
 import { conformTempoRatio, stretchedTimelineDuration } from '../lib/timeStretch';
 import { AtmosphericPanel } from './AtmosphericPanel';
 
+// Vertical lane sizing — session-only, per-track. Drag the handle at the
+// bottom of a row to resize. Heights live in component state so they reset
+// on reload (matches Phase 2 spec).
+const DEFAULT_LANE_HEIGHT = 80;
+const MIN_LANE_HEIGHT = 48;
+const MAX_LANE_HEIGHT = 400;
+
 export function Timeline() {
   const {
     tracks,
@@ -39,6 +46,38 @@ export function Timeline() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
   const [isDragging, setIsDragging] = useState(false);
+  // Per-track lane heights — session only. Missing entries fall back to DEFAULT.
+  const [laneHeights, setLaneHeights] = useState<Record<string, number>>({});
+
+  const getLaneHeight = useCallback((trackId: string): number => {
+    return laneHeights[trackId] ?? DEFAULT_LANE_HEIGHT;
+  }, [laneHeights]);
+
+  const startLaneResize = useCallback((e: React.PointerEvent, trackId: string) => {
+    // Don't let the drag bleed into other handlers (segment clicks, etc.)
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const startHeight = laneHeights[trackId] ?? DEFAULT_LANE_HEIGHT;
+    const prevCursor = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMove = (ev: PointerEvent) => {
+      const delta = ev.clientY - startY;
+      const next = Math.max(MIN_LANE_HEIGHT, Math.min(MAX_LANE_HEIGHT, startHeight + delta));
+      setLaneHeights(h => h[trackId] === next ? h : { ...h, [trackId]: next });
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevUserSelect;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [laneHeights]);
 
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
@@ -413,7 +452,10 @@ export function Timeline() {
               <BeatGrid
                 key={`beat-grid-${bpm}`}
                 width={containerWidth - 100}
-                height={tracks.length * 80 + 120}
+                height={
+                  tracks.reduce((sum, t) => sum + getLaneHeight(t.id), 0)
+                  + (arrangementClips.length > 0 ? 120 : 0)
+                }
                 bpm={bpm}
                 zoom={zoomLevel}
                 scrollOffset={scrollPosition}
@@ -421,12 +463,14 @@ export function Timeline() {
               />
             </div>
 
-            {tracks.map((track, idx) => (
+            {tracks.map((track, idx) => {
+              const laneHeight = getLaneHeight(track.id);
+              return (
               <div
                 key={track.id}
                 data-testid={`track-row-${track.id}`}
-                className="h-20 flex border-b border-border/50 relative z-10"
-                style={{ backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.1)' }}
+                className="flex border-b border-border/50 relative z-10"
+                style={{ height: laneHeight, backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.1)' }}
               >
                 <div
                   className={`w-[100px] shrink-0 border-r border-border/80 px-2 py-1.5 flex flex-col justify-center cursor-pointer transition-colors select-none ${
@@ -469,20 +513,38 @@ export function Timeline() {
                     scrollOffset={scrollPosition}
                     duration={track.duration}
                     width={containerWidth - 100}
-                    height={80}
+                    height={laneHeight}
                     className="absolute inset-0"
                   />
                   {renderSegmentOverlay(track.id, track.duration, track.color, track.name)}
                 </div>
-              </div>
-            ))}
 
-            <ArrangementLane
-              width={containerWidth}
-              height={120}
-              pixelsPerSecond={pixelsPerSecond}
-              scrollOffset={scrollPosition}
-            />
+                {/* Lane resize handle — straddles the bottom border so the hit
+                    target is generous without expanding the visual divider. */}
+                <div
+                  data-testid={`lane-resize-${track.id}`}
+                  className="absolute left-0 right-0 z-30 group"
+                  style={{ bottom: -3, height: 6, cursor: 'ns-resize' }}
+                  onPointerDown={(e) => startLaneResize(e, track.id)}
+                  title="Drag to resize lane height"
+                >
+                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-transparent group-hover:bg-primary/60 transition-colors" />
+                </div>
+              </div>
+              );
+            })}
+
+            {/* Progressive disclosure: the ARRANGEMENT lane only mounts once
+                the user actually creates an override clip. Until then, the
+                timeline is a single-track corrected-source player. */}
+            {arrangementClips.length > 0 && (
+              <ArrangementLane
+                width={containerWidth}
+                height={120}
+                pixelsPerSecond={pixelsPerSecond}
+                scrollOffset={scrollPosition}
+              />
+            )}
 
             {/* Snap guide — cyan vertical line shown while dragging a clip */}
             {snapGuideVisible && (

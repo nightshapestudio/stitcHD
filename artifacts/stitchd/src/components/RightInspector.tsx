@@ -54,7 +54,9 @@ export function RightInspector() {
   const handleFitToSection = () => {
     const targetSecs = parseFloat(fitTargetDuration);
     if (!isNaN(targetSecs) && targetSecs > 0 && clip.sourceDuration > 0) {
-      const ratio = targetSecs / clip.sourceDuration;
+      // SoundTouch ratio convention: ratio = source / target.
+      // Example: source 10s → target 5s ⇒ ratio = 2 (play 2× faster).
+      const ratio = clip.sourceDuration / targetSecs;
       const clamped = Math.max(0.25, Math.min(4, ratio));
       updateArrangementClip(clip.id, { stretchRatio: clamped });
     }
@@ -228,12 +230,12 @@ export function RightInspector() {
                   onClick={handleConformToGrid}
                   className="text-[8px] uppercase tracking-[0.08em] text-[var(--color-signal)]/70 hover:text-[var(--color-signal)] border border-[var(--color-signal)]/25 px-1.5 py-0.5"
                 >
-                  Match grid
+                  Match tempo
                 </button>
               )}
             </div>
             {clip.conformToProjectBpm && (
-              <span className="text-[7px] uppercase tracking-[0.1em] text-primary/50">Linked to grid BPM</span>
+              <span className="text-[7px] uppercase tracking-[0.1em] text-primary/50">Linked to project tempo</span>
             )}
           </div>
 
@@ -267,11 +269,11 @@ export function RightInspector() {
               </Button>
             </div>
             <div className="text-[8px] font-mono text-muted-foreground/50 px-0.5">
-              ratio = target ÷ {clip.sourceDuration.toFixed(2)}s → {
+              ratio = {clip.sourceDuration.toFixed(2)}s ÷ target → {
                 (() => {
                   const t = parseFloat(fitTargetDuration);
                   if (!isNaN(t) && t > 0 && clip.sourceDuration > 0) {
-                    const r = Math.max(0.25, Math.min(4, t / clip.sourceDuration));
+                    const r = Math.max(0.25, Math.min(4, clip.sourceDuration / t));
                     return `${r.toFixed(3)}x`;
                   }
                   return '—';

@@ -64,10 +64,8 @@ export function ArrangementLane({ width, height, pixelsPerSecond, scrollOffset }
     <>
       <div className="h-[120px] flex border-t border-t-primary/20 bg-background mt-4 relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
         <div className="w-[100px] shrink-0 border-r border-border bg-[#111111] p-2 flex flex-col justify-center relative z-10">
-          <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">FINAL<br />MIX</span>
-          {arrangementClips.length > 0 && (
-            <span className="text-[8px] font-mono text-muted-foreground/40 mt-1">{arrangementClips.length} clip{arrangementClips.length !== 1 ? 's' : ''}</span>
-          )}
+          <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">ARRANGEMENT</span>
+          <span className="text-[8px] font-mono text-muted-foreground/40 mt-1">{arrangementClips.length} clip{arrangementClips.length !== 1 ? 's' : ''}</span>
         </div>
 
         <div
@@ -107,13 +105,8 @@ export function ArrangementLane({ width, height, pixelsPerSecond, scrollOffset }
             </div>
           )}
 
-          {!selectedClip && arrangementClips.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/30 font-medium">
-                Click a segment above to add clips
-              </span>
-            </div>
-          )}
+          {/* Empty-state placeholder removed — the lane no longer mounts
+              when arrangementClips is empty (see Timeline.tsx). */}
 
           {arrangementClips.map((clip) => (
             <div
