@@ -330,7 +330,17 @@ export function Timeline() {
         </div>
       </div>
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden relative">
+      {/* Atmospheric backdrop — periwinkle / violet bloom always present
+          behind the timeline content (not just the empty drop-zone state).
+          Fixed inside the timeline pane, doesn't scroll. Keeps populated
+          mode from feeling sparse without competing with waveforms. */}
+      {tracks.length > 0 && (
+        <div className="absolute inset-0 z-0 opacity-[0.55] pointer-events-none">
+          <AtmosphericPanel />
+        </div>
+      )}
+
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden relative z-10">
         {tracks.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
 
@@ -562,11 +572,20 @@ export function Timeline() {
         )}
       </div>
 
-      {/* Playhead — hidden in empty drop zone and before any timeline content / playback */}
+      {/* Playhead — cyan core (signal energy) wrapped in a periwinkle outer
+          halo for atmospheric depth. The cyan reads as precise, the halo
+          reads as alive. */}
       {showPlayhead && (
         <div
           className="absolute top-0 bottom-0 pointer-events-none z-50"
-          style={{ left: playheadX, width: 1, backgroundColor: 'hsl(176 82% 52%)', opacity: 0.9, boxShadow: '0 0 6px hsl(176 82% 46% / 0.55)' }}
+          style={{
+            left: playheadX,
+            width: 1,
+            backgroundColor: 'hsl(176 82% 52%)',
+            opacity: 0.9,
+            boxShadow:
+              '0 0 6px hsl(176 82% 46% / 0.55), 0 0 22px hsl(232 100% 74% / 0.22)',
+          }}
         >
           <div
             className="absolute top-0"
@@ -577,7 +596,8 @@ export function Timeline() {
               borderRight: '5px solid transparent',
               borderTop: '7px solid hsl(176 82% 52%)',
               left: -4,
-              filter: 'drop-shadow(0 0 4px hsl(176 82% 46% / 0.90))',
+              filter:
+                'drop-shadow(0 0 4px hsl(176 82% 46% / 0.90)) drop-shadow(0 0 10px hsl(232 100% 74% / 0.35))',
             }}
           />
         </div>

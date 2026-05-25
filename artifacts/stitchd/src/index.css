@@ -157,7 +157,14 @@
     inset: 0;
     z-index: 9998;
     pointer-events: none;
+    /* Layer order (back→front):
+         1. Periwinkle bloom — atmospheric top-of-frame light
+         2. Violet bloom    — bottom-of-frame accent
+         3. Vignette        — darken corners for cinematic frame
+         4. Lower vignette  — anchor the bottom edge */
     background:
+      radial-gradient(ellipse 75% 55% at 50% -5%,  hsl(232 100% 74% / 0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 65% 45% at 50% 105%, hsl(255 100% 71% / 0.04) 0%, transparent 65%),
       radial-gradient(ellipse 80% 60% at 50% 40%, transparent 45%, rgba(0, 0, 0, 0.35) 100%),
       radial-gradient(ellipse 120% 80% at 50% 100%, rgba(0, 0, 0, 0.55) 0%, transparent 55%);
   }

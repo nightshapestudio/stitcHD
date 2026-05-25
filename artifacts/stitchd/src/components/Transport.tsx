@@ -60,9 +60,31 @@ export function Transport() {
 
   return (
     <div className="h-16 border-t border-border bg-card flex items-center px-4 justify-between shrink-0 z-20 relative">
+      {/* Top edge bloom — 1px cyan→periwinkle gradient line, sits exactly on
+          the transport's top border. Subtle architectural seam between the
+          timeline pane and the transport. */}
+      <span
+        aria-hidden
+        className="absolute top-0 left-0 right-0 h-px pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(90deg, transparent 0%, hsl(176 82% 52% / 0.45) 25%, hsl(232 100% 74% / 0.55) 60%, hsl(255 100% 71% / 0.35) 90%, transparent 100%)',
+          boxShadow: '0 0 8px hsl(232 100% 74% / 0.25)',
+        }}
+      />
+
       {/* Left */}
       <div className="flex items-center gap-4 w-1/4">
-        <div className="text-[11px] font-bold text-muted-foreground tracking-[0.2em] uppercase">STITCHD</div>
+        <div
+          className="text-[11px] font-bold tracking-[0.2em] uppercase bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              'linear-gradient(90deg, hsl(176 82% 60%) 0%, hsl(232 100% 78%) 60%, hsl(255 100% 75%) 100%)',
+            WebkitBackgroundClip: 'text',
+          }}
+        >
+          STITCHD
+        </div>
         <div className="flex items-center gap-1">
           <button
             className="text-[9px] uppercase tracking-[0.12em] font-medium text-foreground/80 hover:text-primary px-2 py-1 transition-colors"
@@ -89,7 +111,11 @@ export function Transport() {
             </span>
             <span
               className="text-xl tracking-wider"
-              style={{ color: 'hsl(176 82% 52%)', textShadow: '0 0 14px hsl(176 82% 46% / 0.65)' }}
+              style={{
+                color: 'hsl(176 82% 58%)',
+                textShadow:
+                  '0 0 12px hsl(176 82% 46% / 0.6), 0 0 28px hsl(232 100% 74% / 0.22)',
+              }}
             >
               {formatBars(playheadPosition, bpm)}
             </span>
@@ -211,7 +237,10 @@ export function Transport() {
           </span>
           <span
             className="text-sm font-mono leading-none mt-0.5"
-            style={{ color: 'hsl(176 82% 52%)' }}
+            style={{
+              color: 'hsl(176 82% 60%)',
+              textShadow: '0 0 10px hsl(232 100% 74% / 0.28)',
+            }}
           >
             {bpm.toFixed(1)}
           </span>

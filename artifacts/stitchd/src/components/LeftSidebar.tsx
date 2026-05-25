@@ -86,7 +86,13 @@ export function LeftSidebar() {
   };
 
   const refTrack = tracks.find(t => t.isReference);
-  const canRevertToAuto = bpmSource === 'manual' && refTrack?.estimatedBpm != null;
+  // Show "Revert to detected" whenever the current project tempo actually
+  // differs from the reference track's detected value — independent of
+  // bpmSource ('manual' | 'tap' | 'auto'). Previously this was gated on
+  // bpmSource === 'manual', which hid the revert affordance after a Tap
+  // even though the tempo still didn't match the detected BPM.
+  const canRevertToAuto = refTrack?.estimatedBpm != null
+    && Math.abs(refTrack.estimatedBpm - bpm) > 0.01;
 
   const SNAP_LABELS: Record<SnapResolution, string> = {
     'bar': 'Bar',

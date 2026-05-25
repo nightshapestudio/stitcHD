@@ -141,7 +141,10 @@ export function useWaveformRenderer({
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // ── Cyan transient spikes — signal energy at high peaks ──
+    // ── Transient spikes — layered for depth ──
+    // First pass: wide periwinkle halo (3px), low alpha — atmospheric energy.
+    // Second pass: crisp cyan core (1px), high alpha — precise signal accent.
+    // Together this reads as "alive light" instead of flat lines.
     for (let i = dataStartIndex; i <= dataEndIndex; i++) {
       const amp = waveformData[i];
       if (amp <= TRANSIENT_THRESHOLD) continue;
@@ -152,16 +155,35 @@ export function useWaveformRenderer({
       const energy = (amp - TRANSIENT_THRESHOLD) / (1 - TRANSIENT_THRESHOLD); // 0–1
       const lightness = Math.round(50 + energy * 22);
       const alpha = 0.32 + energy * 0.58;
+      const haloAlpha = (0.08 + energy * 0.22);
 
-      // Top spike
+      // Periwinkle halo (top) — wider, softer
+      ctx.beginPath();
+      ctx.moveTo(x, middleY - amplitude * 0.45);
+      ctx.lineTo(x, middleY - amplitude);
+      ctx.strokeStyle = `hsl(232 100% 74% / ${haloAlpha})`;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Periwinkle halo (bottom mirror)
+      ctx.beginPath();
+      ctx.moveTo(x, middleY + amplitude * 0.45);
+      ctx.lineTo(x, middleY + amplitude);
+      ctx.strokeStyle = `hsl(232 100% 74% / ${haloAlpha * 0.7})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Cyan core (top spike) — crisp
       ctx.beginPath();
       ctx.moveTo(x, middleY - amplitude * 0.55);
       ctx.lineTo(x, middleY - amplitude);
       ctx.strokeStyle = `hsl(176 82% ${lightness}% / ${alpha})`;
       ctx.lineWidth = 1;
+      ctx.lineCap = 'butt';
       ctx.stroke();
 
-      // Bottom spike (mirrored, slightly dimmer)
+      // Cyan core (bottom spike, slightly dimmer)
       ctx.beginPath();
       ctx.moveTo(x, middleY + amplitude * 0.55);
       ctx.lineTo(x, middleY + amplitude);

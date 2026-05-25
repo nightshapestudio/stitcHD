@@ -54,19 +54,29 @@ export function ApplyingTempoOverlay() {
           aria-hidden
         />
 
-        {/* Pulse bars — staggered waveform animation */}
+        {/* Pulse bars — staggered waveform animation. Alternating cyan
+            (signal) and periwinkle (connective) tones for spectral depth
+            instead of monochrome cyan. */}
         <div className="flex items-end gap-[5px] h-9" aria-hidden>
-          {[0, 1, 2, 3, 4, 5, 6].map(i => (
-            <span
-              key={i}
-              className="w-[3px] bg-primary"
-              style={{
-                animation: 'tethr-tempo-pulse 1.05s ease-in-out infinite',
-                animationDelay: `${i * 0.11}s`,
-                boxShadow: '0 0 6px hsl(176 82% 46% / 0.65)',
-              }}
-            />
-          ))}
+          {[0, 1, 2, 3, 4, 5, 6].map(i => {
+            const isSignal = i % 2 === 0;
+            return (
+              <span
+                key={i}
+                className="w-[3px]"
+                style={{
+                  background: isSignal
+                    ? 'hsl(176 82% 58%)'
+                    : 'hsl(232 100% 74%)',
+                  animation: 'tethr-tempo-pulse 1.05s ease-in-out infinite',
+                  animationDelay: `${i * 0.11}s`,
+                  boxShadow: isSignal
+                    ? '0 0 6px hsl(176 82% 46% / 0.65)'
+                    : '0 0 8px hsl(232 100% 74% / 0.55)',
+                }}
+              />
+            );
+          })}
         </div>
 
         <div className="flex flex-col items-center gap-1.5">
