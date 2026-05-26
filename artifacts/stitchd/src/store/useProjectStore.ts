@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { AudioTrack, Clip, PlaybackState, SegmentMode, ToolMode, BpmSource, SnapResolution } from '../types/audio';
+import { AudioTrack, Clip, PlaybackState, SegmentMode, ToolMode, BpmSource, SnapResolution, SectionMute } from '../types/audio';
 import { conformTempoRatio, clearStretchCacheForTrack } from '../lib/timeStretch';
+import { detectStructure } from '../lib/structureDetection';
 
 function reconformClipsToGrid(clips: Clip[], tracks: AudioTrack[], projectBpm: number): Clip[] {
   return clips.map(c => {
@@ -107,6 +108,52 @@ function estimateBPM(audioBuffer: AudioBuffer): { bpm: number | null; confidence
 }
 
 // ---------------------------------------------------------------------------
+// Waveform peaks — shared by importTrack and loadProject so both code paths
+// produce the same downsampled display data.
+// ---------------------------------------------------------------------------
+function generateWaveformPeaks(audioBuffer: AudioBuffer, peakCount: number = 2000): Float32Array {
+  const channelData = audioBuffer.getChannelData(0);
+  const step = Math.ceil(channelData.length / peakCount);
+  const peaks = new Float32Array(peakCount);
+  for (let i = 0; i < peakCount; i++) {
+    let min = 1.0, max = -1.0;
+    for (let j = 0; j < step; j++) {
+      const d = channelData[i * step + j];
+      if (d !== undefined) {
+        if (d < min) min = d;
+        if (d > max) max = d;
+      }
+    }
+    peaks[i] = Math.max(Math.abs(min), Math.abs(max));
+  }
+  return peaks;
+}
+
+// ---------------------------------------------------------------------------
+// Base64 codec for bundling audio bytes inside the .tethr project file.
+// Chunked encode avoids "Maximum call stack" on multi-MB buffers.
+// ---------------------------------------------------------------------------
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.byteLength; i += chunk) {
+    binary += String.fromCharCode.apply(
+      null,
+      Array.from(bytes.subarray(i, Math.min(i + chunk, bytes.byteLength))),
+    );
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+// ---------------------------------------------------------------------------
 // Store types
 // ---------------------------------------------------------------------------
 interface ProjectState {
@@ -143,6 +190,7 @@ interface ProjectState {
   removeTrack: (id: string) => void;
   setReferenceTrack: (id: string) => void;
   updateTrack: (id: string, updates: Partial<AudioTrack>) => void;
+  toggleSectionMute: (trackId: string, region: SectionMute) => void;
   addArrangementClip: (clip: Clip) => void;
   removeArrangementClip: (id: string) => void;
   updateArrangementClip: (id: string, updates: Partial<Clip>) => void;
@@ -165,8 +213,8 @@ interface ProjectState {
   setSnapGuidePosition: (pos: number | null) => void;
   setMetronomeEnabled: (enabled: boolean) => void;
   triggerPlay: (fromPosition?: number) => void;
-  saveProject: () => void;
-  loadProject: (json: string) => void;
+  saveProject: () => Promise<void>;
+  loadProject: (json: string) => Promise<void>;
   undo: () => void;
   redo: () => void;
 }
@@ -175,11 +223,11 @@ const PAST_STATES: any[] = [];
 const FUTURE_STATES: any[] = [];
 
 const COLORS = [
-  'hsl(186 90% 62% / 0.85)',  // signal cyan — accent track
-  'hsl(232 85% 72% / 0.80)',  // periwinkle midpoint
-  'hsl(255 75% 68% / 0.75)',  // deep violet
-  'hsl(271 70% 70% / 0.70)',  // cool magenta-violet
-  'hsl(220 35% 58% / 0.65)',  // neutral lane
+  'hsl(240 100% 72% / 0.78)', // indigo-blue
+  'hsl(270 100% 64% / 0.72)', // electric purple
+  'hsl(232 58% 64% / 0.70)',  // submerged blue
+  'hsl(282 48% 58% / 0.66)',  // ultraviolet shadow
+  'hsl(220 22% 58% / 0.62)',  // neutral lane
 ];
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -225,32 +273,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const durSec = (audioBuffer.duration % 60).toFixed(1).padStart(4, '0');
     if (detectedBpm !== null) {
       console.log(
-        `[STITCHD import] "${file.name}" | duration: ${durMin}:${durSec} | BPM: ${detectedBpm} | confidence: ${Math.round(confidence * 100)}% | method: energy-autocorrelation`
+        `[TETHR import] "${file.name}" | duration: ${durMin}:${durSec} | BPM: ${detectedBpm} | confidence: ${Math.round(confidence * 100)}% | method: energy-autocorrelation`
       );
     } else {
       console.log(
-        `[STITCHD import] "${file.name}" | duration: ${durMin}:${durSec} | BPM: unknown | confidence: ${Math.round(confidence * 100)}% | fallback: manual entry required`
+        `[TETHR import] "${file.name}" | duration: ${durMin}:${durSec} | BPM: unknown | confidence: ${Math.round(confidence * 100)}% | fallback: manual entry required`
       );
     }
 
     // Waveform peaks (2000 points for display)
-    const channelData = audioBuffer.getChannelData(0);
-    const peakCount = 2000;
-    const step = Math.ceil(channelData.length / peakCount);
-    const peaks = new Float32Array(peakCount);
-    for (let i = 0; i < peakCount; i++) {
-      let min = 1.0, max = -1.0;
-      for (let j = 0; j < step; j++) {
-        const d = channelData[i * step + j];
-        if (d !== undefined) {
-          if (d < min) min = d;
-          if (d > max) max = d;
-        }
-      }
-      peaks[i] = Math.max(Math.abs(min), Math.abs(max));
-    }
+    const peaks = generateWaveformPeaks(audioBuffer);
 
     const isFirstTrack = get().tracks.length === 0;
+
+    // Heuristic song-structure detection. Uses detected BPM for bar-window
+    // sizing; falls back to project BPM if detection failed.
+    const structureBpm = detectedBpm ?? get().bpm;
+    const structureSegments = detectStructure(audioBuffer, structureBpm);
 
     const newTrack: AudioTrack = {
       id: crypto.randomUUID(),
@@ -268,6 +307,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       volume: 1.0,
       estimatedBpm: detectedBpm,
       bpmConfidence: confidence,
+      structureSegments,
+      sectionMutes: [],
     };
 
     set((state) => {
@@ -291,6 +332,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         bpm: applyDetectedToGrid ? detectedBpm : state.bpm,
         bpmSource: applyDetectedToGrid ? 'auto' : state.bpmSource,
         zoomLevel: nextZoom,
+        // Reset playhead + scroll to origin on first import so the timeline
+        // ruler / transport counter both read B1 · 0:00 immediately and the
+        // waveform starts visually aligned.
+        playheadPosition: isFirstTrack ? 0 : state.playheadPosition,
+        scrollPosition: isFirstTrack ? 0 : state.scrollPosition,
       };
     });
   },
@@ -312,6 +358,27 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   updateTrack: (id: string, updates: Partial<AudioTrack>) => set((state) => ({
     tracks: state.tracks.map(t => t.id === id ? { ...t, ...updates } : t),
   })),
+
+  // Toggle a mute region on a track. If a region with the same start/end
+  // already exists, removes it; otherwise adds it. Used by StructureRibbon
+  // to mute/unmute a detected section without creating arrangement clips.
+  toggleSectionMute: (trackId: string, region: SectionMute) => set((state) => {
+    PAST_STATES.push(state);
+    return {
+      tracks: state.tracks.map(t => {
+        if (t.id !== trackId) return t;
+        const existing = t.sectionMutes || [];
+        const matchIdx = existing.findIndex(
+          m => Math.abs(m.start - region.start) < 0.05
+            && Math.abs(m.end - region.end) < 0.05,
+        );
+        const next = matchIdx >= 0
+          ? existing.filter((_, i) => i !== matchIdx)
+          : [...existing, region];
+        return { ...t, sectionMutes: next };
+      }),
+    };
+  }),
 
   addArrangementClip: (clip: Clip) => set((state) => {
     PAST_STATES.push(state);
@@ -416,50 +483,152 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
   }),
 
-  saveProject: () => {
+  saveProject: async () => {
     const state = get();
+
+    // Bundle each track's ORIGINAL file bytes (preserves the compressed
+    // format — MP3 stays MP3 — minimizing project size vs re-encoding WAV).
+    // Encoded as base64 inside the JSON so the .tethr file is a single
+    // self-contained text artifact the user can move/share freely.
+    const tracksOut = await Promise.all(state.tracks.map(async (track) => {
+      const { file, audioBuffer, waveformData, ...meta } = track;
+      let audioBase64: string | undefined;
+      let audioMimeType: string | undefined;
+      let audioByteLength: number | undefined;
+
+      if (file) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          audioBase64 = arrayBufferToBase64(arrayBuffer);
+          audioMimeType = file.type || 'audio/wav';
+          audioByteLength = arrayBuffer.byteLength;
+        } catch (err) {
+          console.error('[TETHR] failed to read audio bytes for', track.name, err);
+        }
+      }
+
+      return { ...meta, audioBase64, audioMimeType, audioByteLength };
+    }));
+
     const project = {
+      schemaVersion: 2,
       id: crypto.randomUUID(),
       name: state.projectName,
       bpm: state.bpm,
       bpmSource: state.bpmSource,
       timeSignatureNumerator: 4,
       timeSignatureDenominator: 4,
-      tracks: state.tracks.map(({ file, audioBuffer, waveformData, ...t }) => t),
-      clips: [],
+      tracks: tracksOut,
       arrangementClips: state.arrangementClips,
-      warpMarkers: [],
       zoomLevel: state.zoomLevel,
       scrollPosition: state.scrollPosition,
       segmentMode: state.segmentMode,
+      metronomeEnabled: state.metronomeEnabled,
+      snapEnabled: state.snapEnabled,
+      snapResolution: state.snapResolution,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+    // No pretty-print — bundled audio makes pretty-print expensive and
+    // pointless. The file is binary-in-text either way.
+    const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${state.projectName}.stitchd`;
+    a.download = `${state.projectName}.tethr`;
     a.click();
     URL.revokeObjectURL(url);
   },
 
-  loadProject: (json: string) => {
+  loadProject: async (json: string) => {
+    let project: any;
     try {
-      const project = JSON.parse(json);
+      project = JSON.parse(json);
+    } catch (e) {
+      console.error('[TETHR] failed to parse project JSON', e);
+      throw new Error('Project file is invalid or corrupted.');
+    }
+
+    // Stop playback + reset transient state before swapping tracks under
+    // the audio engine's feet.
+    set({ playbackState: 'stopped', playheadPosition: 0 });
+
+    const decodeCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+    try {
+      const tracksOut: AudioTrack[] = [];
+      for (const t of (project.tracks ?? [])) {
+        // Schema v2: bundled audio bytes. Schema v1: skip track (no audio
+        // was ever saved). Either way, never throw — partial load is better
+        // than blocked load.
+        if (!t.audioBase64) {
+          console.warn('[TETHR] track', t.name, 'has no bundled audio (legacy schema); skipping');
+          continue;
+        }
+
+        let audioBuffer: AudioBuffer | null = null;
+        let waveformData: Float32Array | null = null;
+        let file: File;
+
+        try {
+          const bytes = base64ToArrayBuffer(t.audioBase64);
+          file = new File([bytes], t.fileName || 'audio', {
+            type: t.audioMimeType || 'audio/wav',
+          });
+          // decodeAudioData neuters its input — pass a fresh copy.
+          audioBuffer = await decodeCtx.decodeAudioData(bytes.slice(0));
+          waveformData = generateWaveformPeaks(audioBuffer);
+        } catch (err) {
+          console.error('[TETHR] failed to decode audio for', t.name, err);
+          continue;
+        }
+
+        tracksOut.push({
+          id: t.id || crypto.randomUUID(),
+          name: t.name || 'Untitled',
+          file,
+          fileName: t.fileName || 'audio',
+          duration: t.duration ?? audioBuffer.duration,
+          sampleRate: t.sampleRate ?? audioBuffer.sampleRate,
+          channelCount: t.channelCount ?? audioBuffer.numberOfChannels,
+          audioBuffer,
+          waveformData,
+          color: t.color || COLORS[tracksOut.length % COLORS.length],
+          isReference: t.isReference ?? (tracksOut.length === 0),
+          isMuted: t.isMuted ?? false,
+          volume: typeof t.volume === 'number' ? t.volume : 1.0,
+          estimatedBpm: t.estimatedBpm ?? null,
+          bpmConfidence: t.bpmConfidence ?? 0,
+          structureSegments: t.structureSegments ?? [],
+          sectionMutes: t.sectionMutes ?? [],
+        });
+      }
+
+      const loadedBpm = project.bpm ?? 120;
+
       set({
-        projectName: project.name,
-        bpm: project.bpm ?? 120,
+        projectName: project.name || 'Untitled Project',
+        bpm: loadedBpm,
+        // Sync appliedBpm so the APPLY TEMPO button doesn't spuriously
+        // appear immediately after a load.
+        appliedBpm: loadedBpm,
         bpmSource: project.bpmSource ?? 'manual',
+        tracks: tracksOut,
         arrangementClips: project.arrangementClips ?? [],
         segmentMode: project.segmentMode ?? 8,
         zoomLevel: project.zoomLevel ?? 1,
         scrollPosition: project.scrollPosition ?? 0,
+        metronomeEnabled: project.metronomeEnabled ?? false,
+        snapEnabled: project.snapEnabled ?? true,
+        snapResolution: project.snapResolution ?? 'bar',
+        selectedClipId: null,
+        selectedTrackId: null,
+        playheadPosition: 0,
+        playbackState: 'stopped',
       });
-      alert('Project loaded. Please re-import the original audio files to restore full playback.');
-    } catch (e) {
-      console.error('Failed to load project', e);
+    } finally {
+      decodeCtx.close().catch(() => {});
     }
   },
 

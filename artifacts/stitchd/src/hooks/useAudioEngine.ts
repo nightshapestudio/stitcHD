@@ -85,9 +85,83 @@ function safeScaledFades(fadeIn: number, fadeOut: number, outDuration: number) {
 // Standalone WAV render — callable from anywhere, no hook needed
 // ---------------------------------------------------------------------------
 export async function renderArrangement(sampleRate: number = 44100): Promise<Blob> {
-  const { arrangementClips, tracks } = useProjectStore.getState();
+  const { arrangementClips, tracks, bpm, selectedTrackId } = useProjectStore.getState();
 
-  if (arrangementClips.length === 0) return new Blob([], { type: 'audio/wav' });
+  // No arrangement clips → render the source-conformed reference track.
+  // Previously this returned an empty Blob and silently failed export.
+  // Users should be able to import → tempo-adjust → export without ever
+  // creating clips.
+  if (arrangementClips.length === 0) {
+    const sourceTrack =
+      tracks.find(t => t.id === selectedTrackId) ||
+      tracks.find(t => t.isReference) ||
+      tracks[0];
+    if (!sourceTrack || !sourceTrack.audioBuffer || sourceTrack.isMuted) {
+      return new Blob([], { type: 'audio/wav' });
+    }
+
+    const ratio = conformTempoRatio(sourceTrack.estimatedBpm, bpm);
+    let buffer = sourceTrack.audioBuffer;
+
+    // Resample to target sampleRate if needed
+    if (buffer.sampleRate !== sampleRate) {
+      const resCtx = new OfflineAudioContext(
+        buffer.numberOfChannels,
+        Math.ceil(buffer.duration * sampleRate),
+        sampleRate,
+      );
+      const s = resCtx.createBufferSource();
+      s.buffer = buffer;
+      s.connect(resCtx.destination);
+      s.start(0);
+      buffer = await resCtx.startRendering();
+    }
+
+    const offlineCtx = new OfflineAudioContext(
+      2,
+      Math.ceil(sampleRate * (buffer.duration / Math.max(0.05, ratio) + 0.25)),
+      sampleRate,
+    );
+
+    const stretched = await getTimeStretchedSlice(
+      offlineCtx,
+      sourceTrack.id,
+      buffer,
+      0,
+      buffer.duration,
+      ratio,
+    );
+
+    // Apply mute regions (sectionMutes) by automating gain at segment edges
+    const mutes = sourceTrack.sectionMutes || [];
+    const masterGain = offlineCtx.createGain();
+    masterGain.connect(offlineCtx.destination);
+
+    const trackVol = Math.max(0, sourceTrack.volume);
+    masterGain.gain.setValueAtTime(trackVol, 0);
+
+    // Mute regions are in SOURCE seconds; convert to OUTPUT seconds via ratio.
+    for (const m of mutes) {
+      const outStart = m.start / Math.max(0.05, ratio);
+      const outEnd   = m.end   / Math.max(0.05, ratio);
+      // Quick fade out → silence → fade back. Avoids clicks.
+      const fade = 0.008;
+      try {
+        masterGain.gain.setValueAtTime(trackVol, Math.max(0, outStart - fade));
+        masterGain.gain.linearRampToValueAtTime(0, outStart);
+        masterGain.gain.setValueAtTime(0, outEnd);
+        masterGain.gain.linearRampToValueAtTime(trackVol, outEnd + fade);
+      } catch (_) {}
+    }
+
+    const src = offlineCtx.createBufferSource();
+    src.buffer = stretched;
+    src.connect(masterGain);
+    src.start(0);
+
+    const rendered = await offlineCtx.startRendering();
+    return encodeWAV(rendered, sampleRate);
+  }
 
   let maxTime = 0;
   arrangementClips.forEach(c => {
@@ -514,7 +588,7 @@ export function useAudioEngine() {
           ratio,
         );
       } catch (err) {
-        console.error('[STITCHD] source-mode tempo conform failed', err);
+        console.error('[TETHR] source-mode tempo conform failed', err);
         stopAllSources();
         setPlaybackState('stopped');
         return;
@@ -558,6 +632,30 @@ export function useAudioEngine() {
       sourceNodesRef.current.push(source);
       source.start(ctx.currentTime, cStart, cDur);
 
+      // Honor sectionMutes — automate the gain to drop to 0 across muted
+      // regions (in OUTPUT seconds, i.e. SOURCE seconds / ratio). The
+      // anti-click envelope above gives us the baseline; we punch holes.
+      const mutes = sourceTrack.sectionMutes || [];
+      if (mutes.length > 0) {
+        const safeRatio = Math.max(0.05, ratio);
+        const trackVol = Math.max(0, sourceTrack.volume);
+        const fade = 0.008;
+        for (const m of mutes) {
+          const outStart = m.start / safeRatio;
+          const outEnd   = m.end   / safeRatio;
+          // Only schedule if the mute region overlaps the playing window.
+          if (outEnd <= cStart || outStart >= cStart + cDur) continue;
+          const muteStartCtx = ctx.currentTime + Math.max(0, outStart - cStart);
+          const muteEndCtx   = ctx.currentTime + Math.max(0, outEnd   - cStart);
+          try {
+            gainNode.gain.setValueAtTime(trackVol, Math.max(ctx.currentTime, muteStartCtx - fade));
+            gainNode.gain.linearRampToValueAtTime(0, muteStartCtx);
+            gainNode.gain.setValueAtTime(0, muteEndCtx);
+            gainNode.gain.linearRampToValueAtTime(trackVol, muteEndCtx + fade);
+          } catch (_) {}
+        }
+      }
+
       // Store absolute ctx time when this source ends so the tick loop can auto-stop
       sourceEndCtxRef.current = srcEndCtx;
 
@@ -585,7 +683,7 @@ export function useAudioEngine() {
             stretchR,
           );
         } catch (err) {
-          console.error('[STITCHD] time-stretch failed for clip', clip.id, err);
+          console.error('[TETHR] time-stretch failed for clip', clip.id, err);
           continue;
         }
 
@@ -735,7 +833,7 @@ export function useAudioEngine() {
   useEffect(() => {
     if (playbackState === 'playing') {
       const pos = useProjectStore.getState().playheadPosition;
-      void schedulePlayback(pos).catch(err => console.error('[STITCHD] playback schedule failed', err));
+      void schedulePlayback(pos).catch(err => console.error('[TETHR] playback schedule failed', err));
     } else if (playbackState === 'paused') {
       const ctx = contextRef.current;
       if (ctx && isPlayingRef.current) {
@@ -760,25 +858,33 @@ export function useAudioEngine() {
   // reconform that setBpm() triggers via reconformClipsToGrid(). BPM
   // changes never auto-restretch audio; the user commits them via the
   // "APPLY TEMPO" button in the Transport (bumps playTrigger).
+  // Also reschedules when a track's sectionMutes change (mute toggles
+  // on the structure ribbon are discrete user clicks).
   useEffect(() => {
     return useProjectStore.subscribe((state, prevState) => {
       if (!isPlayingRef.current || state.playbackState !== 'playing') return;
-      if (state.arrangementClips === prevState.arrangementClips) return;
 
-      const stretchChanged = state.arrangementClips.some(c => {
-        const prev = prevState.arrangementClips.find(p => p.id === c.id);
-        return !prev || prev.stretchRatio !== c.stretchRatio;
-      });
+      const stretchChanged = state.arrangementClips !== prevState.arrangementClips
+        && state.arrangementClips.some(c => {
+          const prev = prevState.arrangementClips.find(p => p.id === c.id);
+          return !prev || prev.stretchRatio !== c.stretchRatio;
+        });
       const bpmChanged = state.bpm !== prevState.bpm;
-      // BPM-induced clip reconforms travel with bpmChanged=true; ignore them.
       const userStretchChanged = stretchChanged && !bpmChanged;
-      if (!userStretchChanged) return;
+
+      const mutesChanged = state.tracks !== prevState.tracks
+        && state.tracks.some(t => {
+          const prev = prevState.tracks.find(p => p.id === t.id);
+          return prev && prev.sectionMutes !== t.sectionMutes;
+        });
+
+      if (!userStretchChanged && !mutesChanged) return;
 
       const ctx = contextRef.current;
       if (!ctx || ctx.state === 'closed') return;
       const pos = startOffsetRef.current + (ctx.currentTime - startTimeRef.current);
       void schedulePlayback(pos).catch(err =>
-        console.error('[STITCHD] clip-stretch reschedule failed', err),
+        console.error('[TETHR] edit reschedule failed', err),
       );
     });
   }, [schedulePlayback]);

@@ -5,6 +5,7 @@ import { meterAnalysers } from '../hooks/useAudioEngine';
 const DB_FLOOR = -60;
 const HOLD_MS = 1800;
 const HOLD_DECAY_DB_S = 18;
+const FOOTER_LABEL_COLOR = 'hsl(268 64% 68%)';
 
 function dbFromLinear(v: number): number {
   if (v < 1e-7) return DB_FLOOR;
@@ -130,23 +131,25 @@ export function LevelMeter() {
         ctx.fillStyle = 'hsl(228 18% 7%)';
         ctx.fillRect(x, 0, BAR_W, BAR_H);
 
-        // Tick marks at -12, -6, -3, 0 dBFS
+        // Tick marks at -12, -6, -3, 0 dBFS — visible scale, not vestigial
         const ticks = [-48, -36, -24, -12, -6, -3];
         for (const t of ticks) {
           const ty = BAR_H - dbToFraction(t) * BAR_H;
-          ctx.fillStyle = t <= -6 ? 'hsl(228 12% 18%)' : 'hsl(228 12% 22%)';
+          ctx.fillStyle = t <= -6 ? 'hsl(228 14% 38%)' : 'hsl(228 14% 50%)';
           ctx.fillRect(x + BAR_W - 3, ty, 2, 1);
         }
 
-        // --- RMS fill (gradient) ---
+        // --- RMS fill (ultraviolet gradient) ---
+        // Floor -> peak ascends through violet -> ultraviolet -> lavender.
+        // Clip warning stays in cold magenta, not warm alarm red.
         if (rmsDb > DB_FLOOR + 1) {
           const rmsY = BAR_H - dbToFraction(rmsDb) * BAR_H;
           const grad = ctx.createLinearGradient(0, 0, 0, BAR_H);
-          grad.addColorStop(0, 'hsl(4 80% 52% / 0.95)');             // clip red
-          grad.addColorStop(dbToFraction(-3), 'hsl(84 88% 50% / 0.9)'); // toxic signal peak
-          grad.addColorStop(dbToFraction(-12), 'hsl(176 82% 46% / 0.88)'); // signal cyan at -12
-          grad.addColorStop(dbToFraction(-24), 'hsl(176 70% 32% / 0.72)'); // dim signal cyan
-          grad.addColorStop(1, 'hsl(176 55% 18% / 0.48)');             // dark floor
+          grad.addColorStop(0, 'hsl(306 76% 64% / 0.95)');                 // clip fault (very top)
+          grad.addColorStop(dbToFraction(-3), 'hsl(295 85% 72% / 0.92)');  // hot magenta/violet at -3
+          grad.addColorStop(dbToFraction(-12), 'hsl(268 90% 70% / 0.88)'); // ultraviolet at -12
+          grad.addColorStop(dbToFraction(-24), 'hsl(248 75% 55% / 0.72)'); // deep periwinkle at -24
+          grad.addColorStop(1, 'hsl(248 50% 22% / 0.50)');                 // dark violet floor
           ctx.fillStyle = grad;
           ctx.fillRect(x + 1, rmsY, BAR_W - 4, BAR_H - rmsY);
         }
@@ -155,28 +158,27 @@ export function LevelMeter() {
         if (peakDb > DB_FLOOR + 2) {
           const pY = BAR_H - dbToFraction(peakDb) * BAR_H;
           ctx.fillStyle = peakDb >= CLIP_DB
-            ? 'hsl(4 80% 65% / 0.9)'
-            : 'hsl(176 90% 68% / 0.82)';
+            ? 'hsl(306 76% 66% / 0.92)'
+            : 'hsl(268 100% 82% / 0.88)';
           ctx.fillRect(x + 1, pY, BAR_W - 4, 2);
         }
 
         // --- Peak hold line (1px) ---
         if (s.holdDb > DB_FLOOR + 3) {
           const hY = BAR_H - dbToFraction(s.holdDb) * BAR_H;
-          // Fade the hold line as it decays
           const age = Math.max(0, now - s.holdAt - HOLD_MS);
           const alpha = s.holdDb > DB_FLOOR + 3
             ? Math.max(0.15, 1 - age / (HOLD_DECAY_DB_S * 1000 / 20))
             : 0;
           ctx.fillStyle = s.holdDb >= CLIP_DB
-            ? `hsl(4 80% 70% / ${alpha})`
-            : `hsl(176 95% 70% / ${alpha})`;
+            ? `hsl(306 76% 68% / ${alpha})`
+            : `hsl(258 60% 76% / ${alpha})`;
           ctx.fillRect(x + 1, Math.max(1, hY), BAR_W - 4, 1);
         }
 
         // --- Clip indicator dot (top-left of bar) ---
         if (s.clipLit) {
-          ctx.fillStyle = 'hsl(4 80% 60%)';
+          ctx.fillStyle = 'hsl(306 76% 64%)';
           ctx.fillRect(x, 0, 3, 3);
         }
 
@@ -186,8 +188,8 @@ export function LevelMeter() {
         ctx.strokeRect(x + 0.25, 0.25, BAR_W - 0.5, BAR_H - 0.5);
 
         // --- Channel label ---
-        ctx.fillStyle = 'hsl(210 8% 28%)';
-        ctx.font = `500 7px 'SF Mono', ui-monospace, monospace`;
+        ctx.fillStyle = 'hsl(224 16% 62%)';
+        ctx.font = `600 7px 'SF Mono', ui-monospace, monospace`;
         ctx.textAlign = 'center';
         ctx.fillText(labels[ch], x + BAR_W / 2, H - 1);
       }
@@ -203,7 +205,12 @@ export function LevelMeter() {
 
   return (
     <div className="flex flex-col items-center" title="Peak / RMS — L R">
-      <span className="text-[7px] uppercase tracking-[0.12em] text-muted-foreground/35 font-mono leading-none mb-0.5">LEVEL</span>
+      <span
+        className="text-[9px] uppercase tracking-[0.22em] leading-none mb-0.5"
+        style={{ color: FOOTER_LABEL_COLOR, fontFamily: 'var(--app-font-ui)', fontWeight: 700 }}
+      >
+        Level
+      </span>
       <canvas ref={canvasRef} style={{ imageRendering: 'pixelated' }} />
     </div>
   );

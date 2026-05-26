@@ -7,6 +7,8 @@ import { SegmentMode, BpmSource, SnapResolution } from '../types/audio';
 import { BpmDragField } from './BpmDragField';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
+const SIDE_LABEL_COLOR = 'hsl(268 64% 68%)';
+
 function formatConfidence(c: number): string {
   if (c >= 0.7) return 'high';
   if (c >= 0.35) return 'med';
@@ -93,6 +95,7 @@ export function LeftSidebar() {
   // even though the tempo still didn't match the detected BPM.
   const canRevertToAuto = refTrack?.estimatedBpm != null
     && Math.abs(refTrack.estimatedBpm - bpm) > 0.01;
+  const hasLoadedAudio = tracks.some(track => !!track.audioBuffer);
 
   const SNAP_LABELS: Record<SnapResolution, string> = {
     'bar': 'Bar',
@@ -102,26 +105,58 @@ export function LeftSidebar() {
   };
 
   return (
-    <div className="w-64 border-r border-border bg-sidebar text-sidebar-foreground flex flex-col h-full shrink-0">
-      <div className="p-4 border-b border-border space-y-4">
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-transparent border border-border text-foreground font-semibold uppercase tracking-[0.12em] rounded-none py-4 text-xs transition-all"
-          style={{
-            borderLeft: '2px solid hsl(176 82% 48%)',
-            boxShadow: 'inset 0 0 0 0 transparent',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = 'hsl(176 82% 48% / 0.6)';
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px hsl(176 82% 46% / 0.10)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = '';
-            (e.currentTarget as HTMLElement).style.boxShadow = '';
-          }}
-        >
-          IMPORT AUDIO
-        </Button>
+    <div
+      className="w-[360px] border-r border-border bg-sidebar text-sidebar-foreground flex flex-col h-full shrink-0"
+      style={{
+        background:
+          'linear-gradient(180deg, hsl(240 7% 5%) 0%, hsl(240 7% 4%) 100%)',
+      }}
+    >
+      <div className="px-6 pt-7 pb-6 border-b border-border/70 space-y-7">
+        <div className="space-y-4">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full bg-transparent uppercase rounded-none h-[96px] text-left px-6 transition-colors hover:bg-white/[0.025]"
+            style={{
+              border: '2px solid hsl(268 80% 60%)',
+              color: 'hsl(var(--signal))',
+              fontFamily: 'var(--app-font-ui)',
+              fontWeight: 700,
+              letterSpacing: '0.25em',
+              fontSize: '24px',
+              boxShadow: 'inset 0 0 0 1px hsl(var(--signal) / 0.10)',
+            }}
+          >
+            Import Audio
+          </button>
+
+          <div className="grid grid-cols-[88px_1fr] items-baseline gap-4 px-1" aria-live="polite">
+            <span
+              className="uppercase"
+              style={{
+                color: SIDE_LABEL_COLOR,
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+                fontSize: '10px',
+                letterSpacing: '0.26em',
+              }}
+            >
+              Status
+            </span>
+            <span
+              className="uppercase"
+              style={{
+                color: hasLoadedAudio ? 'hsl(var(--signal))' : 'hsl(var(--text-mid))',
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+                fontSize: '12px',
+                letterSpacing: '0.24em',
+              }}
+            >
+              {hasLoadedAudio ? 'Loaded' : 'Empty'}
+            </span>
+          </div>
+        </div>
         <input
           type="file"
           ref={fileInputRef}
@@ -133,38 +168,53 @@ export function LeftSidebar() {
 
         {/* Project tempo — the single editable tempo field. The Transport
             shows a read-only mirror of this value. */}
-        <div className="space-y-1.5">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
-              TEMPO
+            <label
+              className="text-[13px] uppercase tracking-[0.32em]"
+              style={{ fontFamily: 'var(--app-font-ui)', color: SIDE_LABEL_COLOR, fontWeight: 700 }}
+            >
+              Tempo
             </label>
-            <span className={`text-[8px] uppercase tracking-[0.1em] font-medium px-1 ${
-              bpmSource === 'auto'
-                ? 'text-primary/80'
-                : bpmSource === 'tap'
-                ? 'text-foreground/60'
-                : 'text-muted-foreground/50'
-            }`}>
-              {bpmSource === 'auto' ? '◉ AUTO' : bpmSource === 'tap' ? '♪ TAP' : '✎ MANUAL'}
+            <span
+              className="text-[11px] uppercase tracking-[0.28em] px-1"
+              style={{
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+                color: bpmSource === 'auto'
+                  ? 'hsl(var(--signal))'
+                  : bpmSource === 'tap'
+                  ? 'hsl(258 50% 70%)'
+                  : 'hsl(258 38% 62%)',
+              }}
+            >
+              {bpmSource === 'auto' ? '◉ Auto' : bpmSource === 'tap' ? '♪ Tap' : '○ Manual'}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-[1fr_132px] gap-4">
             <div className="relative">
-              <div className={`bg-[#0E1117] border h-9 ${
-                bpmSource === 'auto' ? 'border-[var(--color-signal)]/40' : 'border-border'
+              <div className={`bg-[#0E1117] border h-[74px] ${
+                bpmSource === 'auto' ? 'border-primary/45' : 'border-border'
               }`}>
-                <BpmDragField value={bpm} onChange={handleBpmChange} className="h-9" />
+                <BpmDragField value={bpm} onChange={handleBpmChange} className="h-[74px]" />
               </div>
             </div>
 
-            <Button
-              variant="outline"
+            <button
               onClick={handleTapTempo}
-              className="h-9 bg-transparent border-border hover:bg-white/5 hover:border-primary/50 uppercase tracking-[0.08em] rounded-none text-xs text-foreground focus:border-primary focus:text-primary active:border-primary active:text-primary"
+              className="h-[74px] bg-transparent border uppercase rounded-none transition-colors hover:bg-white/[0.04]"
+              style={{
+                borderColor: 'hsl(230 7% 18%)',
+                color: 'hsl(var(--text-high))',
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+                letterSpacing: '0.24em',
+                fontSize: '15px',
+              }}
             >
-              TAP
-            </Button>
+              Tap
+            </button>
           </div>
 
           {/* APPLY TEMPO — sidebar variant. Same action as the Transport
@@ -176,18 +226,29 @@ export function LeftSidebar() {
               onClick={handleApplyTempo}
               disabled={isApplyingTempo}
               title={isApplyingTempo ? 'Applying…' : `Apply ${bpm} BPM to the playing audio`}
-              className="w-full h-8 border border-primary/70 bg-primary/15 hover:bg-primary/25 text-primary text-[10px] uppercase tracking-[0.16em] font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-wait"
-              style={{ boxShadow: '0 0 10px hsl(176 82% 46% / 0.35)' }}
+              className="w-full h-8 border bg-transparent hover:bg-white/[0.04] text-[10px] uppercase tracking-[0.20em] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-wait"
+              style={{
+                borderColor: 'hsl(268 70% 55%)',
+                color: 'hsl(258 48% 74%)',
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+              }}
             >
               <span>Apply Tempo</span>
-              <span className="font-mono opacity-80">→ {Math.round(bpm)}</span>
+              <span className="font-mono opacity-70">→ {Math.round(bpm)}</span>
             </button>
           )}
 
           {canRevertToAuto && (
             <button
               onClick={handleRevertToAuto}
-              className="flex items-center gap-1 text-[8px] uppercase tracking-[0.08em] text-primary/60 hover:text-primary transition-colors"
+              className="flex items-center gap-1 text-[9px] uppercase tracking-[0.16em] transition-colors hover:opacity-100"
+              style={{
+                color: 'hsl(258 48% 68%)',
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+                opacity: 0.85,
+              }}
             >
               <RotateCcw className="w-2.5 h-2.5" />
               Revert to detected {refTrack!.estimatedBpm} BPM
@@ -195,10 +256,25 @@ export function LeftSidebar() {
           )}
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">SEGMENT MODE</label>
+        <div className="space-y-3">
+          <label
+            className="text-[13px] uppercase tracking-[0.32em] block"
+            style={{ fontFamily: 'var(--app-font-ui)', color: SIDE_LABEL_COLOR, fontWeight: 700 }}
+          >
+            Segment Mode
+          </label>
           <Select value={segmentMode.toString()} onValueChange={(v) => setSegmentMode(Number(v) as SegmentMode)}>
-            <SelectTrigger className="h-8 bg-transparent border-border rounded-none uppercase tracking-[0.08em] text-xs hover:border-primary/50 focus:ring-0 focus:border-primary">
+            <SelectTrigger
+              className="h-[54px] bg-transparent rounded-none uppercase focus:ring-0 transition-colors hover:bg-white/[0.04]"
+              style={{
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+                fontSize: '14px',
+                letterSpacing: '0.24em',
+                borderColor: 'hsl(230 7% 18%)',
+                color: 'hsl(var(--text-high))',
+              }}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-none border-border">
@@ -211,70 +287,67 @@ export function LeftSidebar() {
       </div>
 
       {/* Tool mode */}
-      <div className="px-2 pt-2 pb-1 border-b border-border bg-black/10">
-        <div className="flex justify-center gap-1 mb-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setToolMode('select')}
-            className={`w-7 h-7 rounded-none ${toolMode === 'select' ? 'text-primary shadow-[0_2px_8px_hsl(var(--primary)/0.4)]' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
-            title="Select (V)"
-          >
-            <MousePointer2 className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setToolMode('slip')}
-            className={`w-7 h-7 rounded-none ${toolMode === 'slip' ? 'text-primary shadow-[0_2px_8px_hsl(var(--primary)/0.4)]' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
-            title="Slip (S)"
-          >
-            <Hand className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setToolMode('split')}
-            className={`w-7 h-7 rounded-none ${toolMode === 'split' ? 'text-primary shadow-[0_2px_8px_hsl(var(--primary)/0.4)]' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
-            title="Split (X)"
-          >
-            <Scissors className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setToolMode('warp')}
-            className={`w-7 h-7 rounded-none ${toolMode === 'warp' ? 'text-primary shadow-[0_2px_8px_hsl(var(--primary)/0.4)]' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
-            title="Warp (W)"
-          >
-            <Activity className="w-3.5 h-3.5" />
-          </Button>
+      <div className="px-6 pt-5 pb-5 border-b border-border/70 bg-black/10">
+        <div className="flex gap-4 mb-4">
+          {([
+            { mode: 'select' as const, Icon: MousePointer2, title: 'Select (V)' },
+            { mode: 'slip' as const, Icon: Hand, title: 'Slip (S)' },
+            { mode: 'split' as const, Icon: Scissors, title: 'Split (X)' },
+            { mode: 'warp' as const, Icon: Activity, title: 'Warp (W)' },
+          ]).map(({ mode, Icon, title }) => {
+            const active = toolMode === mode;
+            return (
+              <button
+                key={mode}
+                onClick={() => setToolMode(mode)}
+                title={title}
+                className="w-[50px] h-[50px] rounded-none flex items-center justify-center transition-colors hover:bg-white/[0.04]"
+                style={active ? {
+                  border: '1px solid hsl(268 80% 60%)',
+                  color: 'hsl(258 55% 74%)',
+                } : {
+                  border: '1px solid transparent',
+                  color: 'hsl(var(--text-mid))',
+                }}
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            );
+          })}
         </div>
 
         {/* Snap controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="grid grid-cols-[132px_1fr] gap-3">
           <button
             onClick={() => setSnapEnabled(!snapEnabled)}
             title={snapEnabled ? 'Snap ON — click to disable (Shift inverts during drag)' : 'Snap OFF — click to enable'}
-            className={`flex items-center gap-1 h-6 px-2 border text-[9px] uppercase tracking-[0.1em] font-medium transition-colors shrink-0 ${
-              snapEnabled
-                ? 'border-primary/60 text-primary bg-primary/8 shadow-[0_0_6px_hsl(var(--primary)/0.2)]'
-                : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
-            }`}
+            className="flex items-center justify-center gap-2 h-11 px-3 border uppercase transition-colors shrink-0 hover:bg-white/[0.04]"
+            style={{
+              fontFamily: 'var(--app-font-ui)',
+              fontWeight: 700,
+              fontSize: '12px',
+              letterSpacing: '0.22em',
+              borderColor: snapEnabled ? 'hsl(268 80% 60%)' : 'hsl(230 7% 18%)',
+              color: snapEnabled ? 'hsl(258 55% 74%)' : 'hsl(var(--text-mid))',
+            }}
           >
             <Magnet className="w-3 h-3" />
-            SNAP
+            Snap
           </button>
           <Select
             value={snapResolution}
             onValueChange={(v) => setSnapResolution(v as SnapResolution)}
           >
             <SelectTrigger
-              className={`h-6 flex-1 bg-transparent rounded-none text-[9px] uppercase tracking-[0.08em] focus:ring-0 transition-colors ${
-                snapEnabled
-                  ? 'border-primary/30 text-primary hover:border-primary/60'
-                  : 'border-border text-muted-foreground hover:border-primary/30'
-              }`}
+              className="h-11 flex-1 bg-transparent rounded-none uppercase focus:ring-0 transition-colors hover:bg-white/[0.04]"
+              style={{
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+                fontSize: '12px',
+                letterSpacing: '0.22em',
+                borderColor: snapEnabled ? 'hsl(268 60% 45%)' : 'hsl(230 7% 18%)',
+                color: snapEnabled ? 'hsl(258 55% 74%)' : 'hsl(var(--text-mid))',
+              }}
             >
               <SelectValue>{SNAP_LABELS[snapResolution]}</SelectValue>
             </SelectTrigger>
@@ -286,7 +359,16 @@ export function LeftSidebar() {
             </SelectContent>
           </Select>
         </div>
-        <p className="text-[7px] text-muted-foreground/30 mt-1 tracking-wide">Shift inverts snap during drag</p>
+        <p
+          className="text-[11px] mt-4 uppercase tracking-[0.28em] leading-tight"
+          style={{
+            fontFamily: 'var(--app-font-ui)',
+            fontWeight: 700,
+            color: 'hsl(258 38% 62%)',
+          }}
+        >
+          Shift inverts snap during drag
+        </p>
       </div>
 
       {/* Track list */}
@@ -325,11 +407,11 @@ export function LeftSidebar() {
                       ? 'border-primary/40 text-primary bg-primary/5'
                       : track.bpmConfidence >= 0.35
                       ? 'border-border text-foreground/70'
-                      : 'border-amber-500/40 text-amber-400/80'
+                      : 'border-border/60 text-muted-foreground/75 bg-white/[0.025]'
                   }`}>
                     <span>Detected: {track.estimatedBpm}</span>
                     {track.bpmConfidence < 0.35 && (
-                      <span className="text-amber-400 ml-0.5" title={`Low confidence (${Math.round(track.bpmConfidence * 100)}%) — consider manual override`}>?</span>
+                      <span className="text-muted-foreground ml-0.5" title={`Low confidence (${Math.round(track.bpmConfidence * 100)}%) — consider manual override`}>?</span>
                     )}
                     {track.bpmConfidence >= 0.35 && (
                       <span className="text-[7px] uppercase tracking-[0.06em] opacity-50 ml-0.5">
@@ -365,7 +447,7 @@ export function LeftSidebar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className={`h-5 w-6 rounded-none border ${track.isMuted ? 'border-destructive text-destructive' : 'border-border text-muted-foreground hover:border-primary/50'}`}
+                className={`h-5 w-6 rounded-none border ${track.isMuted ? 'border-muted-foreground/45 text-muted-foreground' : 'border-border text-muted-foreground hover:border-primary/50'}`}
                 onClick={() => updateTrack(track.id, { isMuted: !track.isMuted })}
               >
                 {track.isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}

@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useProjectStore } from '../store/useProjectStore';
 import { WaveformCanvas } from './WaveformCanvas';
 import { BeatGrid } from './BeatGrid';
-import { ArrangementLane } from './ArrangementLane';
+import { StructureRibbon } from './StructureRibbon';
 import { snapForward } from '../lib/snapUtils';
 import { conformTempoRatio, stretchedTimelineDuration } from '../lib/timeStretch';
 import { AtmosphericPanel } from './AtmosphericPanel';
@@ -44,8 +44,26 @@ export function Timeline() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Click-to-import for the empty drop zone. Mirrors the LeftSidebar's
+  // file-input flow so users don't HAVE to drag files onto the target.
+  const handleFilePick = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      if (
+        file.type.startsWith('audio/') ||
+        /\.(wav|mp3|m4a|aiff|aif)$/i.test(file.name)
+      ) {
+        await importTrack(file);
+      }
+    }
+    // Reset so the same file can be re-picked later
+    e.target.value = '';
+  }, [importTrack]);
   // Per-track lane heights — session only. Missing entries fall back to DEFAULT.
   const [laneHeights, setLaneHeights] = useState<Record<string, number>>({});
 
@@ -255,7 +273,7 @@ export function Timeline() {
           <div className={`absolute top-1 left-1 px-1 bg-black/80 border text-[9px] uppercase tracking-[0.08em] opacity-0 group-hover:opacity-100 truncate max-w-[calc(100%-8px)] pointer-events-none select-none ${
             isReplaceMode
               ? 'border-primary/60 text-primary'
-              : 'border-border text-white/80'
+              : 'border-border text-foreground/70'
           }`}>
             {isReplaceMode ? `REPLACE → SEG ${i + 1}` : `SEG ${i + 1}`}
           </div>
@@ -317,143 +335,129 @@ export function Timeline() {
       onDragLeave={(e) => { if (!containerRef.current?.contains(e.relatedTarget as Node)) setIsDragging(false); }}
       onDrop={handleDrop}
     >
-      {/* Ruler */}
-      <div
-        className="h-8 bg-[#111111] border-b border-border flex shrink-0 cursor-crosshair select-none relative"
-        onClick={handleRulerClick}
-      >
-        <div className="w-[100px] shrink-0 border-r border-border bg-[#111111] flex items-center px-2">
-          <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground font-medium">TIMELINE</span>
-        </div>
-        <div className="flex-1 relative overflow-hidden">
-          {rulerMarkers()}
-        </div>
-      </div>
-
-      {/* Atmospheric backdrop — periwinkle / violet bloom always present
-          behind the timeline content (not just the empty drop-zone state).
-          Fixed inside the timeline pane, doesn't scroll. Keeps populated
-          mode from feeling sparse without competing with waveforms. */}
-      {tracks.length > 0 && (
-        <div className="absolute inset-0 z-0 opacity-[0.55] pointer-events-none">
-          <AtmosphericPanel />
+      {/* Ruler — hidden on empty state so the import view reads as one
+          quiet surface, not a half-built editor. */}
+      {hasTimelineContent && (
+        <div
+          className="h-8 bg-[#0a0d14] border-b border-border flex shrink-0 cursor-crosshair select-none relative"
+          onClick={handleRulerClick}
+        >
+          <div className="w-[100px] shrink-0 border-r border-border bg-[#0a0d14] flex items-center px-2">
+            <span
+              className="text-[9px] uppercase tracking-[0.22em]"
+              style={{ fontFamily: 'var(--app-font-ui)', color: 'hsl(var(--text-high))', fontWeight: 700 }}
+            >
+              Timeline
+            </span>
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            {rulerMarkers()}
+          </div>
         </div>
       )}
 
+      {/* Hidden file input — backs the click-to-import affordance on the
+          empty drop zone. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="audio/*,.wav,.mp3,.m4a,.aiff,.aif"
+        multiple
+        onChange={handleFilePick}
+      />
+
+      {/* Populated timeline has no atmospheric wash anymore — pure matte
+          graphite. Hierarchy comes from typography, borders, and the
+          waveform itself, not from ambient color. */}
+
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden relative z-10">
         {tracks.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden">
 
             <AtmosphericPanel />
 
-            {/* ── Main reconstruction chamber ── */}
-            <div className="relative" style={{ width: 'min(580px, 82%)', height: 'min(320px, 62%)' }}>
-
-              {/* Ghost perimeter — very faint */}
-              <div className="absolute inset-0" style={{
-                border: '1px dashed hsl(176 82% 48% / 0.09)',
-              }} />
-
-              {/* Subtle corner glow — one per corner */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-8 group cursor-pointer overflow-hidden transition-colors hover:bg-white/[0.012] focus:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(258_90%_70%)]"
+              style={{
+                background: 'transparent',
+                border: '1px dashed hsl(228 12% 26% / 0.78)',
+                boxShadow: 'inset 0 0 0 1px hsl(240 100% 70% / 0.025)',
+              }}
+              aria-label="Choose audio file to import"
+            >
               {[
-                { top: -1, left: -1 },
-                { top: -1, right: -1 },
-                { bottom: -1, left: -1 },
-                { bottom: -1, right: -1 },
-              ].map((pos, i) => (
-                <div key={i} className="absolute w-12 h-12 pointer-events-none" style={{
-                  ...pos,
-                  background: 'radial-gradient(circle at center, hsl(176 82% 52% / 0.12), transparent 70%)',
-                }} />
+                'top-0 left-0 border-t border-l',
+                'top-0 right-0 border-t border-r',
+                'bottom-0 left-0 border-b border-l',
+                'bottom-0 right-0 border-b border-r',
+              ].map((pos) => (
+                <span
+                  key={pos}
+                  aria-hidden
+                  className={`absolute w-8 h-8 ${pos}`}
+                  style={{ borderColor: 'hsl(var(--signal) / 0.72)' }}
+                />
               ))}
 
-              {/* Corner brackets — signal cyan, prominent */}
-              {/* top-left */}
-              <div className="absolute top-0 left-0 w-10 h-10" style={{
-                borderTop: '2px solid hsl(176 82% 50% / 0.70)',
-                borderLeft: '2px solid hsl(176 82% 50% / 0.70)',
-                boxShadow: '-1px -1px 0 0 hsl(176 82% 46% / 0.20)',
-              }} />
-              {/* top-right */}
-              <div className="absolute top-0 right-0 w-10 h-10" style={{
-                borderTop: '2px solid hsl(176 82% 50% / 0.70)',
-                borderRight: '2px solid hsl(176 82% 50% / 0.70)',
-                boxShadow: '1px -1px 0 0 hsl(176 82% 46% / 0.20)',
-              }} />
-              {/* bottom-left */}
-              <div className="absolute bottom-0 left-0 w-10 h-10" style={{
-                borderBottom: '2px solid hsl(176 82% 50% / 0.70)',
-                borderLeft: '2px solid hsl(176 82% 50% / 0.70)',
-                boxShadow: '-1px 1px 0 0 hsl(176 82% 46% / 0.20)',
-              }} />
-              {/* bottom-right */}
-              <div className="absolute bottom-0 right-0 w-10 h-10" style={{
-                borderBottom: '2px solid hsl(176 82% 50% / 0.70)',
-                borderRight: '2px solid hsl(176 82% 50% / 0.70)',
-                boxShadow: '1px 1px 0 0 hsl(176 82% 46% / 0.20)',
-              }} />
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-8 px-8">
 
-              {/* Center content */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
+                <div
+                  className="w-[92px] h-[92px] border flex items-center justify-center"
+                  style={{ borderColor: 'hsl(228 12% 18%)', borderRadius: 999 }}
+                >
+                  <svg width="38" height="38" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <path
+                      d="M12 17V5m0 0l-5 5m5-5l5 5M7 20h10"
+                      stroke="hsl(268 90% 72%)"
+                      strokeWidth="1.55"
+                    />
+                  </svg>
+                </div>
 
-                {/* Upload glyph */}
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="16 16 12 12 8 16" stroke="hsl(176 82% 52% / 0.50)" strokeWidth="1.25" />
-                  <line x1="12" y1="12" x2="12" y2="21" stroke="hsl(176 82% 52% / 0.50)" strokeWidth="1.25" />
-                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" stroke="hsl(258 60% 70% / 0.30)" strokeWidth="1" />
-                </svg>
-
-                {/* Primary label */}
-                <div className="text-center space-y-2">
-                  <p style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    letterSpacing: '0.32em',
-                    textTransform: 'uppercase',
-                    color: 'hsl(176 82% 54% / 0.80)',
-                  }}>
-                    DROP AUDIO FILES
+                <div className="flex flex-col items-center gap-3">
+                  <p
+                    style={{
+                      fontFamily: 'var(--app-font-ui)',
+                      fontWeight: 700,
+                      fontSize: '30px',
+                      letterSpacing: '0.32em',
+                      textTransform: 'uppercase',
+                      color: 'hsl(var(--text-high))',
+                    }}
+                  >
+                    Choose an audio file
                   </p>
-                  <p style={{
-                    fontSize: '9px',
-                    fontFamily: 'monospace',
-                    letterSpacing: '0.22em',
-                    color: 'hsl(258 40% 65% / 0.38)',
-                  }}>
-                    WAV · MP3 · M4A · AIFF
+                  <p
+                    style={{
+                      fontFamily: 'var(--app-font-ui)',
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      letterSpacing: '0.28em',
+                      textTransform: 'uppercase',
+                      color: 'hsl(var(--text-mid))',
+                    }}
+                  >
+                    or drop one anywhere on this screen
                   </p>
                 </div>
 
-                {/* Separator line */}
-                <div style={{
-                  width: 48,
-                  height: 1,
-                  background: 'linear-gradient(90deg, transparent, hsl(258 50% 60% / 0.25), transparent)',
-                }} />
-
-                {/* Footer copy */}
-                <p style={{
-                  fontSize: '8px',
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                  color: 'hsl(258 30% 55% / 0.28)',
-                }}>
-                  or use IMPORT AUDIO in the sidebar
+                <p
+                  style={{
+                    fontFamily: 'var(--app-font-ui)',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    letterSpacing: '0.34em',
+                    textTransform: 'uppercase',
+                    color: 'hsl(var(--text-low))',
+                  }}
+                >
+                  WAV · MP3 · M4A · AIFF
                 </p>
               </div>
-            </div>
-
-            {/* Engine tag — bottom center, atmospheric */}
-            <div className="absolute bottom-6 left-0 right-0 flex justify-center">
-              <p style={{
-                fontSize: '8px',
-                letterSpacing: '0.28em',
-                textTransform: 'uppercase',
-                color: 'hsl(258 25% 50% / 0.18)',
-              }}>
-                AUDIO RECONSTRUCTION ENGINE
-              </p>
-            </div>
+            </button>
 
           </div>
         ) : (
@@ -464,7 +468,7 @@ export function Timeline() {
                 width={containerWidth - 100}
                 height={
                   tracks.reduce((sum, t) => sum + getLaneHeight(t.id), 0)
-                  + (arrangementClips.length > 0 ? 120 : 0)
+                  + 32 /* section ribbon */
                 }
                 bpm={bpm}
                 zoom={zoomLevel}
@@ -472,6 +476,26 @@ export function Timeline() {
                 visibleDuration={visibleDuration}
               />
             </div>
+
+            {/* Section ribbon — heuristic intro/verse/chorus/etc. for the
+                focused source track. Empty state stays visible when section
+                data is unavailable. */}
+            {(() => {
+              const ribbonTrack = tracks.find(t => t.id === selectedTrackId)
+                || tracks.find(t => t.isReference)
+                || tracks[0];
+              const ribbonTrackIndex = ribbonTrack ? tracks.findIndex(t => t.id === ribbonTrack.id) : -1;
+              return ribbonTrack ? (
+                <StructureRibbon
+                  track={ribbonTrack}
+                  trackIndex={Math.max(0, ribbonTrackIndex)}
+                  trackCount={tracks.length}
+                  pixelsPerSecond={pixelsPerSecond}
+                  scrollOffset={scrollPosition}
+                  containerWidth={containerWidth}
+                />
+              ) : null;
+            })()}
 
             {tracks.map((track, idx) => {
               const laneHeight = getLaneHeight(track.id);
@@ -495,6 +519,13 @@ export function Timeline() {
                     <span className="text-[10px] uppercase tracking-wide font-medium truncate text-foreground/80 leading-tight">{track.name}</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
+                    {tracks.length > 1 && (
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-[8px] text-muted-foreground/70 tracking-[0.1em] uppercase">
+                          SRC {String.fromCharCode(65 + idx)}
+                        </span>
+                      </div>
+                    )}
                     {track.isReference && (
                       <div className="flex items-center gap-0.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary" />
@@ -503,8 +534,8 @@ export function Timeline() {
                     )}
                     {track.isMuted && (
                       <div className="flex items-center gap-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                        <span className="text-[8px] text-destructive tracking-[0.1em] uppercase">MUTED</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/45" />
+                        <span className="text-[8px] text-muted-foreground tracking-[0.1em] uppercase">MUTED</span>
                       </div>
                     )}
                     {sourcePlayTrackId === track.id && (
@@ -544,17 +575,11 @@ export function Timeline() {
               );
             })}
 
-            {/* Progressive disclosure: the ARRANGEMENT lane only mounts once
-                the user actually creates an override clip. Until then, the
-                timeline is a single-track corrected-source player. */}
-            {arrangementClips.length > 0 && (
-              <ArrangementLane
-                width={containerWidth}
-                height={120}
-                pixelsPerSecond={pixelsPerSecond}
-                scrollOffset={scrollPosition}
-              />
-            )}
+            {/* ArrangementLane removed from the UI — the primary timeline IS
+                the arrangement. Section operations (mute, future reorder)
+                happen directly on structure segments via StructureRibbon.
+                Internal arrangementClips model is preserved for backward
+                compatibility but no longer surfaced. */}
 
             {/* Snap guide — cyan vertical line shown while dragging a clip */}
             {snapGuideVisible && (
@@ -563,8 +588,8 @@ export function Timeline() {
                 style={{
                   left: snapGuideX!,
                   width: 1,
-                  background: 'hsl(176 82% 60% / 0.65)',
-                  boxShadow: '0 0 5px hsl(176 82% 60% / 0.45)',
+                  background: 'hsl(var(--signal) / 0.65)',
+                  boxShadow: '0 0 4px hsl(var(--signal) / 0.38)',
                 }}
               />
             )}
@@ -572,19 +597,17 @@ export function Timeline() {
         )}
       </div>
 
-      {/* Playhead — cyan core (signal energy) wrapped in a periwinkle outer
-          halo for atmospheric depth. The cyan reads as precise, the halo
-          reads as alive. */}
+      {/* Playhead — restrained. Crisp cyan core with a single short halo,
+          no periwinkle outer ring. Reads as precise architecture. */}
       {showPlayhead && (
         <div
           className="absolute top-0 bottom-0 pointer-events-none z-50"
           style={{
             left: playheadX,
             width: 1,
-            backgroundColor: 'hsl(176 82% 52%)',
-            opacity: 0.9,
-            boxShadow:
-              '0 0 6px hsl(176 82% 46% / 0.55), 0 0 22px hsl(232 100% 74% / 0.22)',
+            backgroundColor: 'hsl(var(--signal))',
+            opacity: 0.95,
+            boxShadow: '0 0 3px hsl(var(--signal) / 0.45)',
           }}
         >
           <div
@@ -592,12 +615,11 @@ export function Timeline() {
             style={{
               width: 0,
               height: 0,
-              borderLeft: '5px solid transparent',
-              borderRight: '5px solid transparent',
-              borderTop: '7px solid hsl(176 82% 52%)',
-              left: -4,
-              filter:
-                'drop-shadow(0 0 4px hsl(176 82% 46% / 0.90)) drop-shadow(0 0 10px hsl(232 100% 74% / 0.35))',
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: '6px solid hsl(var(--signal))',
+              left: -3.5,
+              filter: 'drop-shadow(0 0 2px hsl(var(--signal) / 0.55))',
             }}
           />
         </div>

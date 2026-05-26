@@ -159,12 +159,12 @@ export function ClipBlock({ clip, isSelected, pixelsPerSecond, scrollOffset, hei
         left: `${x}px`,
         width: `${w}px`,
         backgroundColor: withAlpha(clipColor, 0.12),
-        borderLeft: `2px solid ${isSelected ? 'hsl(176 82% 52%)' : clipColor}`,
-        borderTop: isSelected ? '1px solid hsl(176 82% 52%)' : '1px solid transparent',
-        borderRight: isSelected ? '1px solid hsl(176 82% 52%)' : '1px solid transparent',
-        borderBottom: isSelected ? '1px solid hsl(176 82% 52%)' : '1px solid transparent',
+        borderLeft: `2px solid ${isSelected ? 'hsl(var(--primary))' : clipColor}`,
+        borderTop: isSelected ? '1px solid hsl(var(--primary))' : '1px solid transparent',
+        borderRight: isSelected ? '1px solid hsl(var(--primary))' : '1px solid transparent',
+        borderBottom: isSelected ? '1px solid hsl(var(--primary))' : '1px solid transparent',
         boxShadow: isSelected
-          ? '0 0 0 1px hsl(176 82% 52% / 0.28), inset 0 0 14px hsl(176 82% 46% / 0.07), 0 0 20px hsl(176 82% 46% / 0.14)'
+          ? '0 0 0 1px hsl(var(--primary) / 0.24), inset 0 0 12px hsl(var(--primary) / 0.06)'
           : undefined,
       }}
     >

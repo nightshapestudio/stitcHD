@@ -137,7 +137,7 @@ export function CrossfadeEditor({ clip, outputDuration, secondsPerBar, onChange 
       </div>
 
       {fadesTooLong && (
-        <p className="text-[8px] text-amber-400/80 uppercase tracking-[0.06em] leading-snug">
+        <p className="text-[8px] text-primary/80 uppercase tracking-[0.06em] leading-snug">
           Fades overlap — scaled to fit {outputDuration.toFixed(2)}s clip
         </p>
       )}

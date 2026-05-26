@@ -76,7 +76,7 @@ export function BpmDragField({
           min={min}
           max={max}
           step={0.5}
-          className="w-full h-full bg-transparent font-mono text-[var(--color-signal)] text-center text-base outline-none border border-[var(--color-signal)]/40"
+          className="w-full h-full bg-transparent font-mono text-[28px] text-foreground text-center outline-none border border-primary/45"
         />
       </div>
     );
@@ -95,10 +95,10 @@ export function BpmDragField({
       onDoubleClick={() => setEditing(true)}
       title="Drag up/down to change BPM · Shift = fine · Double-click to type"
     >
-      <span className="block w-full h-full flex items-center justify-center font-mono text-[var(--color-signal)] text-center text-base tabular-nums">
+      <span className="block w-full h-full flex items-center justify-center font-mono text-[28px] text-foreground text-center tabular-nums">
         {value}
       </span>
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-mono text-muted-foreground/50 pointer-events-none">
+      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground/50 pointer-events-none">
         {label}
       </span>
     </div>

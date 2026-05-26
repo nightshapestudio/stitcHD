@@ -153,7 +153,6 @@ export function useWaveformRenderer({
       const x = (timeAtPoint - scrollOffset) * pixelsPerSecond;
       const amplitude = Math.min(1, amp) * (middleY - 2);
       const energy = (amp - TRANSIENT_THRESHOLD) / (1 - TRANSIENT_THRESHOLD); // 0–1
-      const lightness = Math.round(50 + energy * 22);
       const alpha = 0.32 + energy * 0.58;
       const haloAlpha = (0.08 + energy * 0.22);
 
@@ -178,7 +177,7 @@ export function useWaveformRenderer({
       ctx.beginPath();
       ctx.moveTo(x, middleY - amplitude * 0.55);
       ctx.lineTo(x, middleY - amplitude);
-      ctx.strokeStyle = `hsl(176 82% ${lightness}% / ${alpha})`;
+      ctx.strokeStyle = `hsl(180 60% 50% / ${alpha})`;
       ctx.lineWidth = 1;
       ctx.lineCap = 'butt';
       ctx.stroke();
@@ -187,7 +186,7 @@ export function useWaveformRenderer({
       ctx.beginPath();
       ctx.moveTo(x, middleY + amplitude * 0.55);
       ctx.lineTo(x, middleY + amplitude);
-      ctx.strokeStyle = `hsl(176 82% ${lightness}% / ${alpha * 0.65})`;
+      ctx.strokeStyle = `hsl(180 60% 50% / ${alpha * 0.65})`;
       ctx.stroke();
     }
 

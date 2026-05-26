@@ -6,10 +6,8 @@ import { useProjectStore } from '../store/useProjectStore';
  * change. Driven by `isApplyingTempo` in the store — set true by the
  * APPLY TEMPO handlers, cleared in schedulePlayback's finally block.
  *
- * Visual: dark translucent backdrop with a centered card containing a
- * staggered cyan-bar pulse (evokes a waveform / metronome) and a short
- * uppercase label. TETHR signal-cyan accents only — no loud color, no
- * spinner clichés.
+ * Visual direction: a single signal scan reads as engineering status, not
+ * generic loader chrome. No rainbow bars, no glow fog.
  */
 export function ApplyingTempoOverlay() {
   const isApplyingTempo = useProjectStore(s => s.isApplyingTempo);
@@ -21,78 +19,91 @@ export function ApplyingTempoOverlay() {
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-auto"
       style={{
-        background: 'radial-gradient(ellipse at center, rgba(10, 12, 16, 0.78) 0%, rgba(6, 8, 12, 0.92) 100%)',
-        backdropFilter: 'blur(3px)',
-        WebkitBackdropFilter: 'blur(3px)',
+        background: 'rgba(4, 6, 10, 0.82)',
+        backdropFilter: 'blur(2px)',
+        WebkitBackdropFilter: 'blur(2px)',
       }}
       role="status"
       aria-live="polite"
-      aria-label="Applying tempo changes"
+      aria-label="Applying tempo correction"
     >
       <div
-        className="flex flex-col items-center gap-6 px-10 py-7 border border-primary/35 bg-[#0e1117]/95 relative"
+        className="relative flex flex-col items-center gap-7 px-14 py-9"
         style={{
-          boxShadow:
-            '0 0 48px hsl(176 82% 46% / 0.18), 0 0 0 1px hsl(258 60% 70% / 0.05) inset',
+          background: 'hsl(230 6% 5%)',
+          border: '1px solid hsl(230 7% 14%)',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85)',
+          minWidth: 320,
         }}
       >
-        {/* Corner accents — subtle TETHR signature */}
-        <span
-          className="absolute top-0 left-0 w-3 h-3 border-t border-l border-primary/60"
-          aria-hidden
-        />
-        <span
-          className="absolute top-0 right-0 w-3 h-3 border-t border-r border-primary/60"
-          aria-hidden
-        />
-        <span
-          className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-primary/60"
-          aria-hidden
-        />
-        <span
-          className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-primary/60"
-          aria-hidden
-        />
+        {/* Architectural corner marks */}
+        {(
+          [
+            { top: -1, left: -1, borders: 'border-t border-l' },
+            { top: -1, right: -1, borders: 'border-t border-r' },
+            { bottom: -1, left: -1, borders: 'border-b border-l' },
+            { bottom: -1, right: -1, borders: 'border-b border-r' },
+          ] as const
+        ).map((p, i) => (
+          <span
+            key={i}
+            aria-hidden
+            className={`absolute w-3 h-3 ${p.borders}`}
+            style={{
+              top: (p as any).top,
+              left: (p as any).left,
+              right: (p as any).right,
+              bottom: (p as any).bottom,
+              borderColor: 'hsl(258 80% 70%)',
+            }}
+          />
+        ))}
 
-        {/* Pulse bars — staggered waveform animation. Alternating cyan
-            (signal) and periwinkle (connective) tones for spectral depth
-            instead of monochrome cyan. */}
-        <div className="flex items-end gap-[5px] h-9" aria-hidden>
-          {[0, 1, 2, 3, 4, 5, 6].map(i => {
-            const isSignal = i % 2 === 0;
-            return (
-              <span
-                key={i}
-                className="w-[3px]"
-                style={{
-                  background: isSignal
-                    ? 'hsl(176 82% 58%)'
-                    : 'hsl(232 100% 74%)',
-                  animation: 'tethr-tempo-pulse 1.05s ease-in-out infinite',
-                  animationDelay: `${i * 0.11}s`,
-                  boxShadow: isSignal
-                    ? '0 0 6px hsl(176 82% 46% / 0.65)'
-                    : '0 0 8px hsl(232 100% 74% / 0.55)',
-                }}
-              />
-            );
-          })}
+        {/* Sweeping signal beam — single horizontal scan, no glow fog. */}
+        <div className="relative h-[2px] w-[200px] overflow-hidden" aria-hidden>
+          {/* Track */}
+          <div
+            className="absolute inset-0"
+            style={{ background: 'hsl(258 40% 20% / 0.5)' }}
+          />
+          {/* Beam */}
+          <div
+            className="absolute top-0 bottom-0 w-[60px]"
+            style={{
+              animation: 'tethr-beam 1.5s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+              background:
+                'linear-gradient(90deg, transparent 0%, hsl(var(--signal)) 50%, transparent 100%)',
+            }}
+          />
         </div>
 
-        <div className="flex flex-col items-center gap-1.5">
-          <span className="text-[11px] uppercase tracking-[0.32em] font-medium text-primary">
-            Applying Tempo
+        <div className="flex flex-col items-center gap-2">
+          <span
+            className="text-[12px] uppercase tracking-[0.34em]"
+            style={{
+              color: 'hsl(258 48% 76%)',
+              fontFamily: 'var(--app-font-ui)',
+              fontWeight: 700,
+            }}
+          >
+            Applying tempo correction…
           </span>
-          <span className="text-[8px] uppercase tracking-[0.22em] text-muted-foreground/70 font-mono">
-            {bpm.toFixed(1)} BPM · pitch-preserving render
+          <span
+            className="text-[9px] uppercase tracking-[0.24em]"
+            style={{
+              color: 'hsl(var(--text-mid))',
+              fontFamily: 'var(--app-font-mono)',
+            }}
+          >
+            {bpm.toFixed(1)} BPM · pitch-preserving
           </span>
         </div>
       </div>
 
       <style>{`
-        @keyframes tethr-tempo-pulse {
-          0%, 100% { height: 18%; opacity: 0.45; }
-          50%      { height: 100%; opacity: 1; }
+        @keyframes tethr-beam {
+          0%   { left: -60px; }
+          100% { left: 200px; }
         }
       `}</style>
     </div>

@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Progress } from './ui/progress';
 import { useProjectStore } from '../store/useProjectStore';
 import { renderArrangement } from '../hooks/useAudioEngine';
@@ -14,8 +10,31 @@ interface ExportModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Shared text styles — NIGHTSHAPE UI is bold-only now, so every visible text
+// element here pins its font + weight explicitly. Anything that wants a
+// non-bold treatment uses the mono face (for technical values) instead of
+// falling back to system-ui synthesized weights.
+const STYLE_LABEL: React.CSSProperties = {
+  fontFamily: 'var(--app-font-ui)',
+  fontWeight: 700,
+  color: 'hsl(var(--text-high))',
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  fontSize: '10px',
+};
+const STYLE_VALUE: React.CSSProperties = {
+  fontFamily: 'var(--app-font-mono)',
+  color: 'hsl(var(--text-high))',
+  fontSize: '12px',
+};
+const STYLE_HINT: React.CSSProperties = {
+  fontFamily: 'var(--app-font-mono)',
+  color: 'hsl(var(--text-mid))',
+  fontSize: '11px',
+};
+
 export function ExportModal({ open, onOpenChange }: ExportModalProps) {
-  const { projectName, arrangementClips } = useProjectStore();
+  const { projectName, tracks } = useProjectStore();
   const [filename, setFilename] = useState('');
   const [sampleRate, setSampleRate] = useState('44100');
   const [isExporting, setIsExporting] = useState(false);
@@ -23,10 +42,11 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   const effectiveName = filename.trim() || projectName || 'export';
+  const canExport = tracks.some(t => !!t.audioBuffer);
 
   const handleExport = async () => {
-    if (arrangementClips.length === 0) {
-      setError('No clips in the arrangement lane. Add clips first.');
+    if (!canExport) {
+      setError('Import an audio file first.');
       return;
     }
 
@@ -42,7 +62,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
       setProgress(90);
 
       if (blob.size === 0) {
-        throw new Error('Rendered output is empty. Make sure arrangement clips have audio loaded.');
+        throw new Error('Rendered output is empty.');
       }
 
       await new Promise(r => setTimeout(r, 100));
@@ -81,81 +101,143 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[440px] border-border bg-card">
+      <DialogContent
+        className="sm:max-w-[440px] rounded-none p-6"
+        style={{
+          background: 'hsl(230 6% 6%)',
+          border: '1px solid hsl(230 7% 18%)',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85)',
+        }}
+      >
         <DialogHeader>
-          <DialogTitle className="text-foreground">Export Final Mix</DialogTitle>
+          <DialogTitle
+            className="text-[12px] uppercase tracking-[0.22em]"
+            style={{ color: 'hsl(var(--text-high))', fontFamily: 'var(--app-font-ui)', fontWeight: 700 }}
+          >
+            Export
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-2">
+          {/* Filename */}
           <div className="grid grid-cols-4 items-center gap-3">
-            <Label className="text-right text-xs">Filename</Label>
-            <Input
+            <label className="text-right" style={STYLE_LABEL}>Filename</label>
+            <input
               value={filename}
               placeholder={effectiveName}
               onChange={(e) => setFilename(e.target.value)}
-              className="col-span-3 bg-input border-border h-8 text-sm"
               disabled={isExporting}
+              className="col-span-3 h-9 px-3 outline-none focus:border-[hsl(258_70%_55%)] transition-colors disabled:opacity-50"
+              style={{
+                ...STYLE_VALUE,
+                background: 'hsl(230 6% 4%)',
+                border: '1px solid hsl(230 7% 18%)',
+              }}
             />
           </div>
 
+          {/* Sample Rate */}
           <div className="grid grid-cols-4 items-center gap-3">
-            <Label className="text-right text-xs">Sample Rate</Label>
-            <Select value={sampleRate} onValueChange={setSampleRate} disabled={isExporting}>
-              <SelectTrigger className="col-span-3 bg-input border-border h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="44100">44.1 kHz</SelectItem>
-                <SelectItem value="48000">48 kHz</SelectItem>
-              </SelectContent>
-            </Select>
+            <label className="text-right" style={STYLE_LABEL}>Sample Rate</label>
+            <select
+              value={sampleRate}
+              onChange={(e) => setSampleRate(e.target.value)}
+              disabled={isExporting}
+              className="col-span-3 h-9 px-3 outline-none focus:border-[hsl(258_70%_55%)] transition-colors disabled:opacity-50 appearance-none cursor-pointer"
+              style={{
+                ...STYLE_VALUE,
+                background: 'hsl(230 6% 4%)',
+                border: '1px solid hsl(230 7% 18%)',
+              }}
+            >
+              <option value="44100">44.1 kHz</option>
+              <option value="48000">48 kHz</option>
+            </select>
           </div>
 
+          {/* Format */}
           <div className="grid grid-cols-4 items-center gap-3">
-            <Label className="text-right text-xs">Format</Label>
-            <div className="col-span-3 h-8 flex items-center">
-              <span className="text-sm text-muted-foreground">WAV · 16-bit PCM · Stereo</span>
+            <label className="text-right" style={STYLE_LABEL}>Format</label>
+            <div className="col-span-3 h-9 flex items-center">
+              <span style={STYLE_HINT}>WAV · 16-bit PCM · Stereo</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-3">
-            <Label className="text-right text-xs">Clips</Label>
-            <div className="col-span-3 h-8 flex items-center">
-              <span className="text-sm font-mono text-muted-foreground">
-                {arrangementClips.length} clip{arrangementClips.length !== 1 ? 's' : ''} in arrangement
-              </span>
+          {/* Source */}
+          <div className="grid grid-cols-4 items-start gap-3">
+            <label className="text-right pt-1" style={STYLE_LABEL}>Source</label>
+            <div className="col-span-3 flex items-center">
+              <span style={STYLE_HINT}>Current timeline · tempo-conformed · mutes honored</span>
             </div>
           </div>
 
           {isExporting && (
             <div className="space-y-2 mt-2">
-              <Progress value={progress} className="w-full h-2" />
-              <p className="text-xs text-center text-muted-foreground">
-                {progress < 30 ? 'Preparing...' : progress < 90 ? 'Rendering audio...' : 'Encoding WAV...'}
+              <Progress value={progress} className="w-full h-1" />
+              <p
+                className="text-center"
+                style={{
+                  fontFamily: 'var(--app-font-mono)',
+                  color: 'hsl(var(--text-mid))',
+                  fontSize: '11px',
+                }}
+              >
+                {progress < 30 ? 'Preparing…' : progress < 90 ? 'Rendering audio…' : 'Encoding WAV…'}
               </p>
             </div>
           )}
 
           {error && (
-            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 text-sm text-destructive">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div
+              className="flex items-start gap-2 px-3 py-2 border text-[11px]"
+              style={{
+                background: 'hsl(286 24% 9%)',
+                borderColor: 'hsl(286 48% 42%)',
+                color: 'hsl(224 22% 76%)',
+                fontFamily: 'var(--app-font-ui)',
+                fontWeight: 700,
+              }}
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isExporting}>
+        <DialogFooter className="gap-2">
+          <button
+            onClick={() => handleOpenChange(false)}
+            disabled={isExporting}
+            className="h-9 px-4 border bg-transparent hover:bg-white/[0.04] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              fontFamily: 'var(--app-font-ui)',
+              fontWeight: 700,
+              fontSize: '10px',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: 'hsl(var(--text-high))',
+              borderColor: 'hsl(230 7% 18%)',
+            }}
+          >
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={handleExport}
-            disabled={isExporting || arrangementClips.length === 0}
-            className="bg-primary text-primary-foreground"
+            disabled={isExporting || !canExport}
             data-testid="button-export-wav"
+            className="h-9 px-4 border bg-transparent hover:bg-white/[0.04] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              fontFamily: 'var(--app-font-ui)',
+              fontWeight: 700,
+              fontSize: '10px',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: 'hsl(258 48% 74%)',
+              borderColor: 'hsl(258 70% 55%)',
+            }}
           >
             {isExporting ? 'Exporting…' : 'Export WAV'}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

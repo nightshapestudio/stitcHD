@@ -1,11 +1,11 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
-import StitchdEditor from "@/components/StitchdEditor";
+import TethrEditor from "@/components/TethrEditor";
 
 function App() {
   return (
     <TooltipProvider>
-      <StitchdEditor />
+      <TethrEditor />
       <Toaster />
     </TooltipProvider>
   );

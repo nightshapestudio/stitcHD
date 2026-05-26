@@ -5,6 +5,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+   NIGHTSHAPE font system — brand display + UI text
+   ============================================================ */
+@font-face {
+  font-family: 'NIGHTSHAPE';
+  src: url('/fonts/NIGHTSHAPE-Bold_Outline.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'NIGHTSHAPE UI';
+  src: url('/fonts/NIGHTSHAPE-UI-Bold_FINAL.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Adam';
+  src: url('/fonts/Adam-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -59,6 +84,8 @@
   --font-sans: var(--app-font-sans);
   --font-serif: var(--app-font-serif);
   --font-mono: var(--app-font-mono);
+  --font-display: var(--app-font-display);
+  --font-ui: var(--app-font-ui);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -67,51 +94,58 @@
 }
 
 :root, .dark {
-  /* Palette anchors — #07090D base, spectral hierarchy */
-  --background: 220 27% 4%;       /* #07090D */
-  --foreground: 228 100% 95%;     /* #E6ECFF bright */
+  /* TETHR / NIGHTSHAPE palette. Surfaces read as matte hardware:
+     #0C0C0E foundation, cool industrial greys, spectral color only when it
+     carries state or signal. */
+  --background: 240 8% 5%;        /* #0c0c0e - matte OLED foundation */
+  --foreground: 224 24% 78%;      /* cold steel, low-glare primary text */
 
-  --card: 220 24% 7%;             /* #0E1117 panel */
-  --card-foreground: 228 80% 92%;
-  --card-border: 220 18% 12%;
+  --text-high: 224 24% 78%;
+  --text-mid: 224 15% 60%;
+  --text-low: 224 10% 45%;
+  --text-faint: 224 8% 34%;
 
-  --border: 220 16% 14%;
-  --input: 220 22% 8%;
-  --ring: 186 100% 68%;           /* cyan focus */
+  --card: 240 7% 6%;              /* #0e0e11 — panel, barely lifted */
+  --card-foreground: 224 20% 74%;
+  --card-border: 230 7% 13%;
 
-  --primary: 232 100% 74%;        /* #7C8CFF periwinkle — connective */
-  --primary-foreground: 220 27% 6%;
-  --primary-border: hsl(232 70% 58%);
+  --border: 230 7% 15%;           /* cool separator */
+  --input: 240 6% 6%;
+  --ring: 240 100% 71%;           /* #6666ff focus — meaningful */
+
+  --primary: 240 100% 70%;        /* #6666ff — indigo-blue, non-live accent */
+  --primary-foreground: 240 8% 5%;
+  --primary-border: hsl(240 78% 58%);
 
   --secondary: 220 20% 10%;
-  --secondary-foreground: 220 19% 65%; /* #94A0B8 muted */
+  --secondary-foreground: 224 15% 58%;
   --secondary-border: hsl(220 16% 18%);
 
-  --muted: 220 22% 8%;            /* #131823 elevated */
-  --muted-foreground: 220 19% 65%;
+  --muted: 230 6% 8%;             /* elevated graphite */
+  --muted-foreground: 224 14% 56%;
 
-  --accent: 255 100% 71%;         /* #6B4DFF violet — selective */
-  --accent-foreground: 228 100% 96%;
-  --accent-border: hsl(255 70% 58%);
+  --accent: 270 100% 60%;         /* #9933ff — electric purple, restrained */
+  --accent-foreground: 224 24% 78%;
+  --accent-border: hsl(270 70% 50%);
 
-  --destructive: 4 75% 50%;
-  --destructive-foreground: 228 80% 95%;
+  --destructive: 286 48% 44%;     /* cool fault state, no warm alarm red */
+  --destructive-foreground: 224 24% 78%;
 
   --popover: 220 24% 7%;
-  --popover-foreground: 228 80% 92%;
+  --popover-foreground: 224 20% 74%;
   --popover-border: 220 16% 14%;
 
-  --sidebar: 220 26% 5%;
-  --sidebar-foreground: 220 19% 72%;
-  --sidebar-border: 220 16% 11%;
-  --sidebar-primary: 232 100% 74%;
-  --sidebar-primary-foreground: 220 27% 6%;
+  --sidebar: 240 7% 5%;
+  --sidebar-foreground: 224 22% 76%;
+  --sidebar-border: 230 7% 13%;
+  --sidebar-primary: 240 100% 70%;
+  --sidebar-primary-foreground: 240 8% 5%;
   --sidebar-accent: 220 22% 9%;
   --sidebar-accent-foreground: 220 19% 58%;
-  --sidebar-ring: 186 100% 68%;
+  --sidebar-ring: 180 60% 50%;
 
-  --signal: 186 100% 68%;         /* #5DE1FF — active/transport only */
-  --signal-dim: 186 70% 45%;
+  --signal: 180 60% 50%;          /* #33cccc — active signal/transport only */
+  --signal-dim: 180 48% 38%;
 
   --chart-1: 186 90% 62%;
   --chart-2: 232 85% 72%;
@@ -119,8 +153,15 @@
   --chart-4: 271 70% 70%;
   --chart-5: 220 35% 58%;
 
-  --app-font-sans: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --app-font-serif: Georgia, serif;
+  /* NIGHTSHAPE-UI Bold — workhorse UI face AND brand wordmark.
+     Adam Medium — editorial/headline alt.
+     NIGHTSHAPE Bold-Outline — rare specialty accent only.
+     SF Mono — technical / numeric readouts. */
+  --app-font-sans: 'NIGHTSHAPE UI', 'Adam', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --app-font-ui: 'NIGHTSHAPE UI', system-ui, sans-serif;
+  --app-font-outline: 'NIGHTSHAPE', 'NIGHTSHAPE UI', system-ui, sans-serif;
+  --app-font-display: 'NIGHTSHAPE UI', 'Adam', system-ui, sans-serif;
+  --app-font-serif: 'Adam', Georgia, serif;
   --app-font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Mono', ui-monospace, monospace;
   --radius: 0px;
 }
@@ -157,16 +198,11 @@
     inset: 0;
     z-index: 9998;
     pointer-events: none;
-    /* Layer order (back→front):
-         1. Periwinkle bloom — atmospheric top-of-frame light
-         2. Violet bloom    — bottom-of-frame accent
-         3. Vignette        — darken corners for cinematic frame
-         4. Lower vignette  — anchor the bottom edge */
+    /* PURE DARK VIGNETTE — no color wash. The earlier periwinkle/violet
+       blooms here tinted the entire app like fog. Removed. */
     background:
-      radial-gradient(ellipse 75% 55% at 50% -5%,  hsl(232 100% 74% / 0.05) 0%, transparent 60%),
-      radial-gradient(ellipse 65% 45% at 50% 105%, hsl(255 100% 71% / 0.04) 0%, transparent 65%),
-      radial-gradient(ellipse 80% 60% at 50% 40%, transparent 45%, rgba(0, 0, 0, 0.35) 100%),
-      radial-gradient(ellipse 120% 80% at 50% 100%, rgba(0, 0, 0, 0.55) 0%, transparent 55%);
+      radial-gradient(ellipse 80% 60% at 50% 40%, transparent 40%, rgba(0, 0, 0, 0.55) 100%),
+      radial-gradient(ellipse 120% 80% at 50% 100%, rgba(0, 0, 0, 0.75) 0%, transparent 55%);
   }
 
   @keyframes grain {
@@ -183,7 +219,7 @@
   ::-webkit-scrollbar-thumb { background: hsl(220 16% 22%); border-radius: 2px; }
   ::-webkit-scrollbar-thumb:hover { background: hsl(220 16% 30%); }
 
-  ::selection { background: hsl(186 100% 68% / 0.18); }
+  ::selection { background: hsl(var(--primary) / 0.20); }
 
   input[type='number']::-webkit-inner-spin-button,
   input[type='number']::-webkit-outer-spin-button {

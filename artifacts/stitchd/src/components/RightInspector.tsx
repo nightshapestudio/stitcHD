@@ -208,7 +208,7 @@ export function RightInspector() {
               <Label className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
                 TEMPO CONFORM
               </Label>
-              <span className="font-mono text-[var(--color-signal)] text-xs">{clip.stretchRatio.toFixed(2)}x</span>
+              <span className="font-mono text-primary text-xs">{clip.stretchRatio.toFixed(2)}x</span>
             </div>
             <Slider
               value={[clip.stretchRatio]}
@@ -228,7 +228,7 @@ export function RightInspector() {
                 <button
                   type="button"
                   onClick={handleConformToGrid}
-                  className="text-[8px] uppercase tracking-[0.08em] text-[var(--color-signal)]/70 hover:text-[var(--color-signal)] border border-[var(--color-signal)]/25 px-1.5 py-0.5"
+                  className="text-[8px] uppercase tracking-[0.08em] text-primary/70 hover:text-primary border border-primary/25 px-1.5 py-0.5"
                 >
                   Match tempo
                 </button>

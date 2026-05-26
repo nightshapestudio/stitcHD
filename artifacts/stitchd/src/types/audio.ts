@@ -14,6 +14,23 @@ export interface AudioTrack {
   volume: number;           // 0-1
   estimatedBpm: number | null;  // detected BPM, null if detection failed or not run
   bpmConfidence: number;        // 0–1, autocorrelation confidence
+  structureSegments: StructureSegment[];  // heuristic structure (intro/verse/chorus/…)
+  sectionMutes: SectionMute[];  // direct-manipulation mute regions (source seconds)
+}
+
+/** A muted region on the source track — silences during playback & export
+ *  without requiring an arrangement clip. Coordinates in SOURCE seconds. */
+export interface SectionMute {
+  start: number;
+  end: number;
+}
+
+/** Heuristic structural region within a track (energy-grouped, bar-snapped). */
+export interface StructureSegment {
+  start: number;            // seconds in source
+  end: number;              // seconds in source
+  label: string;            // e.g. "INTRO" | "VERSE 1" | "CHORUS 2" | "BREAKDOWN" | "OUTRO"
+  energy: 'low' | 'mid' | 'high';
 }
 
 export type SectionLabel =
