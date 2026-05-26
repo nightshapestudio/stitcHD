@@ -3,7 +3,7 @@ Now that source playback and snap-to-grid are implemented, do NOT add major new 
 Next priority is:
 REAL-WORLD WORKFLOW HARDENING.
 
-I want STITCHD to feel fast, reliable, and intuitive during actual song reconstruction work.
+I want TETHR to feel fast, reliable, and intuitive during actual song reconstruction work.
 
 Focus on improving the current workflow instead of expanding scope.
 
@@ -94,7 +94,7 @@ Do NOT add:
 IMPORTANT PRODUCT DIRECTION
 ====================================================
 
-STITCHD is NOT a DAW.
+TETHR is NOT a DAW.
 
 It is:
 - a reconstruction workstation

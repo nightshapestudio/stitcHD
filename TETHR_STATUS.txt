@@ -1,199 +1,50 @@
 ====================================================
-STITCHD STATUS FILE
+TETHR STATUS FILE
 ====================================================
 
-====================================================
 PRODUCT IDENTITY
 ====================================================
 
-STITCHD has TWO equally core modes. Neither is secondary.
+TETHR is a dead-simple single-track beat correction and structural
+segmentation tool.
 
-MODE 1 — MULTI-TRACK RECONSTRUCTION
-- Import multiple versions of a song or stems
-- Align on a shared timeline
-- Replace broken/weak sections with clean ones from alternate versions
-- Build a Frankenstein master from the best parts
+Primary workflow:
+1. Import one audio track.
+2. Analyze detected BPM and tempo state.
+3. Auto-correct playback/export through the pitch-preserving SoundTouch path.
+4. Make the corrected track the active working track automatically.
+5. Detect structural changes and display neutral segments:
+   Segment 01, Segment 02, Segment 03, etc.
 
-MODE 2 — SINGLE-TRACK TEMPO REPAIR
-- Import one track
-- Detect average BPM
-- Generate a beat/bar grid
-- Segment the song into sections
-- Tighten timing drift across the arrangement
-- Repair inconsistent pacing section by section
-- Export a tightened final WAV
-- No additional tracks required
-
-Single-track repair philosophy:
-- Preserve pitch, feel, groove, transients, vocal quality
-- Behave like intelligent tempo conforming and timing micro-surgery
-- NOT crude global speed change or pitch-altering playbackRate stretch
-
-====================================================
-CURRENT DIRECTIVE:
-REAL-WORLD RECONSTRUCTION TESTING
+CURRENT IMPLEMENTATION NOTES
 ====================================================
 
-The app now has enough core systems to evaluate.
-DO NOT ADD NEW FEATURES until real-world testing surfaces actual pain points.
+- Import replaces the current working track instead of appending more tracks.
+- Imported audio becomes the selected active track immediately.
+- Detected BPM anchors the project tempo when available.
+- Import clears active clip state so playback stays on the single-track path.
+- Structure detection remains heuristic and energy-based.
+- Segment labels are intentionally neutral; semantic section naming is deferred.
+- The existing pitch-preserving tempo path is preserved.
 
-Testing workflow to run:
-
-1. Import multiple related tracks
-2. Audition source tracks (source-only playback, track click-to-select)
-3. Assign section labels (INT / VRS / PRE / CHR / BRG / BKD / OUT)
-4. Replace sections (stamp clips, snap to grid)
-5. Snap to grid (bar/beat snapping, shift to invert)
-6. Seam audition (loop seam, audition boundary)
-7. Fade adjustment (fade in/out presets, 1B bar preset, curve select)
-8. Export final WAV (44.1 or 48 kHz, 16-bit PCM stereo)
-
-Use real drifting/imperfect tracks.
-Evaluate: editing speed, seam quality, timing stability, replacement workflow, reconstruction ergonomics.
-
-====================================================
-LATEST MILESTONE:
-SECTION LABELS
+CURRENT UX DIRECTION
 ====================================================
 
-Implemented and confirmed clean:
+- Keep the NIGHTSHAPE dark industrial visual language.
+- Avoid DAW and multitrack reconstruction metaphors in the primary UI.
+- Prefer clear telemetry: import state, correction state, segment count.
+- Cyan remains reserved for active signal/status/transport states.
+- Violet/periwinkle remains structural identity emphasis.
 
-Data model:
-- SectionLabel union type: intro | verse | pre | chorus | bridge | breakdown | outro
-- sectionLabel?: SectionLabel added to Clip interface
-- Serializes automatically in .tethr project files
-- Designed for future: section matching, quantize, timing repair, one-click replacement
-
-Constants:
-- src/lib/sectionLabels.ts: SECTION_LABELS array + getSectionShort / getSectionFull helpers
-- Shared between ClipBlock and RightInspector — single source of truth
-
-ClipBlock header:
-- 3-letter abbreviation (INT/VRS/PRE/CHR/BRG/BKD/OUT) appears left-aligned in dim cyan
-- Free-text clip label shifts right and dims when section label is set
-- No label set: original single-line layout unchanged
-
-RightInspector:
-- Seven compact buttons between label input and SRC line
-- One click assigns; clicking active label clears it
-- Active: cyan border + tinted fill
-- Inactive: dim border, hover highlight
-
-Validation:
-- TypeScript check passed with zero errors.
-- App runs clean.
-
-====================================================
-PREVIOUS MILESTONE:
-WORKFLOW HARDENING PASS
+KNOWN LIMITS
 ====================================================
 
-Snap-to-grid:
-- SnapResolution type added.
-- snapUtils.ts: snapPosition and snapForward with 1ms epsilon.
-- Cyan snap guide during drag. Shift inverts snap.
-- Snap options: Bar, Beat, 1/2, 1/4. Controls in LeftSidebar.
+- Per-beat drift maps and local transient-aware warping are not implemented yet.
+- Current correction uses the existing global pitch-preserving tempo conform path.
+- Segment detection is automatic but heuristic; labels are not semantic.
 
-Source-only playback:
-- Play falls through: selected -> reference -> first track.
-- Tick loop auto-stops at source end.
-- Users can press Play before adding arrangement clips.
-
-Audio engine hardening:
-- 20ms soft stop gain ramp (no hard-cut clicks).
-- 4ms anti-click ramp-in on source starts.
-- 10ms loop crossfade.
-- safeScaledFades: live playback fade scaling matches WAV export logic.
-
-Track click-to-select:
-- Clicking track label focuses it for source-only playback.
-- Focused source track shows SRC badge + subtle highlight.
-- Visual priority matches playback priority.
-
-Crossfade UX:
-- CrossfadeEditor: 1B preset when BPM is set.
-- 1B = (60 / bpm) * 4 seconds, clamped to clip duration.
-
-====================================================
-PREVIOUS MILESTONE:
-SOURCE PLAYBACK + SNAP TO GRID
+VALIDATION
 ====================================================
 
-Source-only playback when arrangement is empty.
-Snap-to-grid with global toggle, resolution, and visual guide.
-snapUtils.ts: snapPosition + snapForward.
-ClipBlock: move/trim/trim-right all snap through snapPosition.
-Timeline: append positions use snapForward.
-
-====================================================
-POSSIBLE FUTURE ADDITIONS
-(evaluate only after real-world testing)
-====================================================
-
-- Section filtering (dim clips not matching selected section)
-- Smart snap / transient-aware snapping
-- Keyboard editing shortcuts
-- Section matching between tracks
-- One-click section replacement
-- Nudge seam (blocked until workflow test pass)
-
-====================================================
-LONG-TERM SINGLE-TRACK REPAIR ROADMAP
-====================================================
-
-Requires pitch-preserving engine (not playbackRate):
-
-- Local tempo smoothing and micro time-warping
-- Beat/transient alignment per section
-- Transient-aware quantization (Tight / Natural / Transparent)
-- Region-based timing correction for per-section drift
-- Automatic low-impact cut detection
-- Micro crossfades at edit points
-- Silence tightening and local drift compensation
-- Section detection within a single song
-
-====================================================
-DO NOT ADD
-====================================================
-
-- Waveform diff view
-- Waveform seam AI / AI analysis
-- BPM tap overlays
-- Metadata systems / organizational feature creep
-- SaaS / cloud / auth systems
-- Mobile layouts
-- Global playbackRate stretch presented as pitch-preserving
-
-====================================================
-NO PITCH DRIFT RULE — NON-NEGOTIABLE
-====================================================
-
-- playbackRate-based stretch must always be labeled "DRAFT ONLY - changes pitch"
-- Current stretch slider stays DRAFT ONLY until a true pitch-preserving engine exists
-
-====================================================
-ARCHITECTURE NOTES
-====================================================
-
-- Entirely client-side: Web Audio API, Canvas, Zustand, no DB or API server.
-- Clip arrangement lane uses pointer capture API for smooth drag.
-- WAV export uses OfflineAudioContext at 44.1 kHz or 48 kHz, 16-bit PCM stereo.
-- Beat grid snapping uses Shift key modifier on drag operations.
-- vite.config.ts uses dedupe for react, react-dom, zustand.
-
-====================================================
-KEY FILES
-====================================================
-
-artifacts/tethr/src/hooks/useAudioEngine.ts       - Web Audio engine + WAV renderer
-artifacts/tethr/src/store/useProjectStore.ts      - Zustand store (source of truth)
-artifacts/tethr/src/components/TethrEditor.tsx  - Top-level layout
-artifacts/tethr/src/components/Timeline.tsx       - Track rows + waveform view
-artifacts/tethr/src/components/ArrangementLane.tsx - Clip drag/drop lane
-artifacts/tethr/src/components/ClipBlock.tsx      - Individual clip move/trim/split
-artifacts/tethr/src/components/RightInspector.tsx - Clip properties panel
-artifacts/tethr/src/components/CrossfadeEditor.tsx - Fade in/out + 1B preset
-artifacts/tethr/src/components/LeftSidebar.tsx    - BPM, snap controls, tools
-artifacts/tethr/src/lib/snapUtils.ts              - snapPosition + snapForward
-artifacts/tethr/src/lib/sectionLabels.ts          - SECTION_LABELS constants + helpers
-artifacts/tethr/src/types/audio.ts               - All TypeScript types
+- Run `pnpm run typecheck` from `artifacts/tethr`.
+- Run `pnpm run build` from `artifacts/tethr`.

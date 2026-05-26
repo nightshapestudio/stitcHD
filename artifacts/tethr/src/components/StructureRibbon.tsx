@@ -12,14 +12,14 @@ interface StructureRibbonProps {
 }
 
 /**
- * Cinematic section overlay — a thin band that sits between the time ruler
+ * Cinematic segment overlay — a thin band that sits between the time ruler
  * and waveform lanes, showing heuristically-detected song regions for the
- * focused source track.
+ * active track.
  *
  * Coordinates: source seconds, same space the waveform canvas uses.
  *
- * Click toggles a section mute on the source track. Replacement/swapping can
- * build from this same source-section map later without inventing UI now.
+ * Click toggles a segment mute on the active track. Replacement/swapping can
+ * build from this same segment map later without inventing UI now.
  */
 export function StructureRibbon({
   track,
@@ -33,10 +33,10 @@ export function StructureRibbon({
 
   const segments = track.structureSegments ?? [];
   const hasSegments = segments.length > 0;
-  const sourceLabel = trackCount > 1 ? `SRC ${String.fromCharCode(65 + trackIndex)}` : 'SRC';
+  const sourceLabel = trackCount > 1 ? `TRACK ${trackIndex + 1}` : 'ACTIVE TRACK';
 
-  // Single gesture — click toggles mute on the section. What you see is
-  // what plays AND what exports. No alt-click side path, no arrangement-lane
+  // Single gesture — click toggles mute on the segment. What you see is
+  // what plays AND what exports. No alt-click side path, no extra lane
   // round-trip, no hidden routing.
   const handleSegmentClick = useCallback((seg: StructureSegment) => {
     toggleSectionMute(track.id, { start: seg.start, end: seg.end });
@@ -62,7 +62,7 @@ export function StructureRibbon({
             fontWeight: 700,
           }}
         >
-          Sections
+          Segments
         </span>
         <span
           className="text-[7px] uppercase tracking-[0.16em] leading-none"
@@ -80,7 +80,7 @@ export function StructureRibbon({
               className="text-[9px] uppercase tracking-[0.18em]"
               style={{ color: 'hsl(var(--text-mid))', fontFamily: 'var(--app-font-ui)', fontWeight: 700 }}
             >
-              No sections detected yet
+              No segments detected yet
             </span>
           </div>
         )}
@@ -168,12 +168,15 @@ export function StructureRibbon({
 
 function formatSegmentLabel(label: string | undefined, index: number): string {
   const clean = (label || '').trim();
-  if (!clean) return `Segment ${String(index + 1).padStart(2, '0')}`;
+  const fallback = `Segment ${String(index + 1).padStart(2, '0')}`;
+  if (!clean) return fallback;
 
-  return clean
-    .replace(/^BREAKDOWN\b/i, 'Bridge')
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const segmentMatch = clean.match(/^segment\s*(\d+)/i);
+  if (segmentMatch?.[1]) {
+    return `Segment ${segmentMatch[1].padStart(2, '0')}`;
+  }
+
+  return fallback;
 }
 
 /**
@@ -182,20 +185,20 @@ function formatSegmentLabel(label: string | undefined, index: number): string {
  */
 function energyTone(energy: 'low' | 'mid' | 'high') {
   if (energy === 'high') {
-    // CHORUS / peak - brightest ultraviolet edge, cold high-emphasis label
+    // Peak-energy segment - brightest ultraviolet edge, cold high-emphasis label
     return {
       edge: 'hsl(268 95% 72%)',
       label: 'hsl(224 24% 78%)',
     };
   }
   if (energy === 'mid') {
-    // VERSE - lavender edge, cool steel label
+    // Mid-energy segment - lavender edge, cool steel label
     return {
       edge: 'hsl(240 100% 70%)',
       label: 'hsl(224 20% 72%)',
     };
   }
-  // BREAKDOWN / low — dim graphite edge, dimmer label
+  // Low-energy segment - dim graphite edge, dimmer label
   return {
     edge: 'hsl(228 18% 40%)',
     label: 'hsl(224 16% 62%)',

@@ -10,13 +10,8 @@ import type { StructureSegment } from '../types/audio';
  *   4. Group consecutive same-level windows.
  *   5. Smooth: merge groups shorter than MIN_BARS into their neighbour, then
  *      collapse adjacent same-level groups created by the merge.
- *   6. Label groups by position + energy:
- *        first group  → INTRO
- *        last group   → OUTRO
- *        high energy  → CHORUS
- *        mid energy   → VERSE
- *        low energy   → BREAKDOWN
- *   7. Number repeats: "CHORUS 1", "CHORUS 2", etc.
+ *   6. Label groups neutrally as Segment 01, Segment 02, etc. Energy is
+ *      retained only as visual/analysis metadata, not semantic naming.
  *
  * Output coordinates are in source seconds — they line up with the waveform
  * canvas directly (which also renders in source-time).
@@ -100,39 +95,15 @@ export function detectStructure(
 
   if (collapsed.length === 0) return [];
 
-  // --- 5. Position + energy → label ---
-  const N = collapsed.length;
+  // --- 5. Neutral segment labels ---
   const segments: StructureSegment[] = collapsed.map((g, i) => {
-    let label: string;
-    if (i === 0) {
-      label = 'INTRO';
-    } else if (i === N - 1) {
-      label = 'OUTRO';
-    } else if (g.level === 'high') {
-      label = 'CHORUS';
-    } else if (g.level === 'mid') {
-      label = 'VERSE';
-    } else {
-      label = 'BREAKDOWN';
-    }
     return {
       start: g.start * secPerBar,
       end: Math.min(buffer.duration, (g.end + 1) * secPerBar),
-      label,
+      label: `SEGMENT ${String(i + 1).padStart(2, '0')}`,
       energy: g.level,
     };
   });
-
-  // --- 6. Number repeats (skip INTRO / OUTRO which are unique by position) ---
-  const counts: Record<string, number> = {};
-  for (const s of segments) counts[s.label] = (counts[s.label] || 0) + 1;
-  const seen: Record<string, number> = {};
-  for (const s of segments) {
-    if (counts[s.label] > 1 && s.label !== 'INTRO' && s.label !== 'OUTRO') {
-      seen[s.label] = (seen[s.label] || 0) + 1;
-      s.label = `${s.label} ${seen[s.label]}`;
-    }
-  }
 
   return segments;
 }

@@ -3,7 +3,7 @@ CORE PRODUCT MODE:
 SINGLE-TRACK TEMPO REPAIR
 ====================================================
 
-STITCHD must fully support repairing and tightening ONE track without requiring alternate versions.
+TETHR must fully support repairing and tightening ONE track without requiring alternate versions.
 
 This is not a secondary workflow.
 It is a core product mode.
@@ -72,7 +72,7 @@ Example:
 - chorus slightly rushed
 - bridge drifts late
 
-STITCHD should eventually help normalize these sections while preserving musicality.
+TETHR should eventually help normalize these sections while preserving musicality.
 
 ====================================================
 QUANTIZE MODE
@@ -118,7 +118,7 @@ until a true pitch-preserving engine exists.
 IMPORTANT PRODUCT IDENTITY
 ====================================================
 
-STITCHD has TWO equally important modes:
+TETHR has TWO equally important modes:
 
 1. Multi-track reconstruction
 - replace sections between song versions

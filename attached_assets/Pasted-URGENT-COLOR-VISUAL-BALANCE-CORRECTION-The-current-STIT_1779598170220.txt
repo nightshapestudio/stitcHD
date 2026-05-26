@@ -1,6 +1,6 @@
 URGENT COLOR + VISUAL BALANCE CORRECTION.
 
-The current STITCHD UI has drifted too far into:
+The current TETHR UI has drifted too far into:
 - monochrome matte black
 - dim purple
 - almost no cyan signal energy
@@ -26,7 +26,7 @@ Right now the UI feels too dead and underlit.
 VISUAL TARGET
 ====================================================
 
-STITCHD should visually feel like:
+TETHR should visually feel like:
 - a luxury audio reconstruction workstation
 - cinematic signal processing
 - spectral forensic editing
@@ -144,7 +144,7 @@ The DRUMKIT concepts already had the correct balance:
 - restrained glitch rendering
 - luminous waveform contrast
 
-STITCHD should inherit that same visual language.
+TETHR should inherit that same visual language.
 
 ====================================================
 IMPORTANT

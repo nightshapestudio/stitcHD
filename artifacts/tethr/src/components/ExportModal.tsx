@@ -167,7 +167,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
           <div className="grid grid-cols-4 items-start gap-3">
             <label className="text-right pt-1" style={STYLE_LABEL}>Source</label>
             <div className="col-span-3 flex items-center">
-              <span style={STYLE_HINT}>Current timeline · tempo-conformed · mutes honored</span>
+              <span style={STYLE_HINT}>Active corrected track · segment mutes honored</span>
             </div>
           </div>
 

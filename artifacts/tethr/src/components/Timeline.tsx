@@ -3,8 +3,7 @@ import { useProjectStore } from '../store/useProjectStore';
 import { WaveformCanvas } from './WaveformCanvas';
 import { BeatGrid } from './BeatGrid';
 import { StructureRibbon } from './StructureRibbon';
-import { snapForward } from '../lib/snapUtils';
-import { conformTempoRatio, stretchedTimelineDuration } from '../lib/timeStretch';
+import { stretchedTimelineDuration } from '../lib/timeStretch';
 import { AtmosphericPanel } from './AtmosphericPanel';
 
 // Vertical lane sizing — session-only, per-track. Drag the handle at the
@@ -18,7 +17,6 @@ export function Timeline() {
   const {
     tracks,
     arrangementClips,
-    selectedClipId,
     selectedTrackId,
     bpm,
     segmentMode,
@@ -28,17 +26,13 @@ export function Timeline() {
     playheadPosition,
     setPlayheadPosition,
     importTrack,
-    addArrangementClip,
-    updateArrangementClip,
     playbackState,
-    snapEnabled,
-    snapResolution,
     snapGuidePosition,
     selectTrack,
   } = useProjectStore();
 
-  // Compute which track will play in source-only mode so we can badge it
-  const sourcePlayTrackId = arrangementClips.length === 0
+  // Compute the active single-track target so we can badge it.
+  const activeTrackId = arrangementClips.length === 0
     ? (selectedTrackId || tracks.find(t => t.isReference)?.id || tracks[0]?.id || null)
     : null;
 
@@ -53,13 +47,12 @@ export function Timeline() {
   const handleFilePick = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    for (const file of Array.from(files)) {
-      if (
-        file.type.startsWith('audio/') ||
-        /\.(wav|mp3|m4a|aiff|aif)$/i.test(file.name)
-      ) {
-        await importTrack(file);
-      }
+    const file = Array.from(files).find(f =>
+      f.type.startsWith('audio/') ||
+      /\.(wav|mp3|m4a|aiff|aif)$/i.test(f.name)
+    );
+    if (file) {
+      await importTrack(file);
     }
     // Reset so the same file can be re-picked later
     e.target.value = '';
@@ -173,29 +166,16 @@ export function Timeline() {
         f.type.startsWith('audio/') ||
         /\.(wav|mp3|m4a|aiff|aif)$/i.test(f.name)
       );
-      for (const file of files) {
-        await importTrack(file);
-      }
+      if (files[0]) await importTrack(files[0]);
     }
   }, [importTrack]);
 
-  // Calculate insertion position: end of current arrangement (snap forward to next grid boundary)
-  const getInsertPosition = useCallback(() => {
-    const { arrangementClips: clips, snapEnabled: se, snapResolution: sr, bpm: b } = useProjectStore.getState();
-    if (clips.length === 0) return 0;
-    const rawEnd = Math.max(...clips.map(c => c.timelinePosition + c.sourceDuration));
-    return snapForward(rawEnd, b, se, sr);
-  }, []);
-
-  const renderSegmentOverlay = useCallback((trackId: string, duration: number, color: string, trackName: string) => {
+  const renderSegmentOverlay = useCallback((trackId: string, duration: number) => {
     if (bpm <= 0 || duration <= 0) return null;
     const secondsPerBar = (60 / bpm) * 4;
     const segmentDuration = secondsPerBar * segmentMode;
     const numSegments = Math.ceil(duration / segmentDuration);
     const segments = [];
-
-    // Snapshot selected clip at render time (stable ref via getState inside handler)
-    const isReplaceMode = !!selectedClipId;
 
     for (let i = 0; i < numSegments; i++) {
       const segStart = i * segmentDuration;
@@ -210,78 +190,19 @@ export function Timeline() {
         <div
           key={i}
           data-testid={`segment-${trackId}-${i}`}
-          className={`absolute top-0 bottom-0 border-r group cursor-pointer transition-colors ${
-            isReplaceMode
-              ? 'border-primary/30 hover:bg-primary/10'
-              : 'border-primary/20 hover:bg-white/5'
-          }`}
+          className="absolute top-0 bottom-0 border-r border-primary/12 pointer-events-none"
           style={{ left: x, width: w }}
-          onClick={(e) => {
-            e.stopPropagation();
-
-            // Read fresh state at click time to avoid stale closure
-            const { selectedClipId: selId, arrangementClips: clips } = useProjectStore.getState();
-            const selectedClip = selId ? clips.find(c => c.id === selId) : null;
-
-            if (selectedClip) {
-              // REPLACE MODE — keep position, fades, gain; auto-stretch to fill old output duration
-              const oldOutputDuration = selectedClip.sourceDuration / Math.max(0.05, selectedClip.stretchRatio);
-              const newStretchRatio = Math.max(0.25, Math.min(4, segDuration / oldOutputDuration));
-
-              updateArrangementClip(selectedClip.id, {
-                trackId,
-                sourceStart: segStart,
-                sourceDuration: segDuration,
-                slipOffset: 0,
-                stretchRatio: newStretchRatio,
-                // Clamp fades to new source duration
-                fadeIn: Math.min(selectedClip.fadeIn, segDuration),
-                fadeOut: Math.min(selectedClip.fadeOut, segDuration),
-                // Preserve: timelinePosition, nudgeOffset, fadeCurve, gain, label gets updated
-                label: `${trackName} – Seg ${i + 1}`,
-                color,
-              });
-              // Clip stays selected (same id), no extra selectClip call needed
-            } else {
-              // APPEND MODE — add new clip at end of arrangement, snapped to grid
-              const insertPos = getInsertPosition();
-              const { tracks: allTracks, bpm: gridBpm } = useProjectStore.getState();
-              const srcTrack = allTracks.find(t => t.id === trackId);
-              const initialStretch = srcTrack?.estimatedBpm
-                ? conformTempoRatio(srcTrack.estimatedBpm, gridBpm)
-                : 1;
-              addArrangementClip({
-                id: crypto.randomUUID(),
-                trackId,
-                sourceStart: segStart,
-                sourceDuration: segDuration,
-                timelinePosition: insertPos,
-                nudgeOffset: 0,
-                slipOffset: 0,
-                fadeIn: 0.05,
-                fadeOut: 0.05,
-                fadeCurve: 'equal-power',
-                gain: 1.0,
-                label: `${trackName} – Seg ${i + 1}`,
-                color,
-                stretchRatio: initialStretch,
-                conformToProjectBpm: true,
-              });
-            }
-          }}
         >
-          <div className={`absolute top-1 left-1 px-1 bg-black/80 border text-[9px] uppercase tracking-[0.08em] opacity-0 group-hover:opacity-100 truncate max-w-[calc(100%-8px)] pointer-events-none select-none ${
-            isReplaceMode
-              ? 'border-primary/60 text-primary'
-              : 'border-border text-foreground/70'
-          }`}>
-            {isReplaceMode ? `REPLACE → SEG ${i + 1}` : `SEG ${i + 1}`}
-          </div>
+          {w > 72 && (
+            <div className="absolute top-1 left-1 px-1 text-[8px] uppercase tracking-[0.12em] text-foreground/30 select-none">
+              SEG {i + 1}
+            </div>
+          )}
         </div>
       );
     }
     return segments;
-  }, [bpm, segmentMode, scrollPosition, pixelsPerSecond, containerWidth, selectedClipId, addArrangementClip, updateArrangementClip, getInsertPosition]);
+  }, [bpm, segmentMode, scrollPosition, pixelsPerSecond, containerWidth]);
 
   const rulerMarkers = () => {
     const markers = [];
@@ -363,7 +284,6 @@ export function Timeline() {
         type="file"
         className="hidden"
         accept="audio/*,.wav,.mp3,.m4a,.aiff,.aif"
-        multiple
         onChange={handleFilePick}
       />
 
@@ -508,28 +428,21 @@ export function Timeline() {
               >
                 <div
                   className={`w-[100px] shrink-0 border-r border-border/80 px-2 py-1.5 flex flex-col justify-center cursor-pointer transition-colors select-none ${
-                    sourcePlayTrackId === track.id
+                    activeTrackId === track.id
                       ? 'bg-primary/8 border-r-primary/40'
                       : 'bg-[#111111] hover:bg-white/5'
                   }`}
                   onClick={() => selectTrack(track.id)}
-                  title="Click to focus this track for source playback"
+                  title="Active corrected track"
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="text-[10px] uppercase tracking-wide font-medium truncate text-foreground/80 leading-tight">{track.name}</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {tracks.length > 1 && (
-                      <div className="flex items-center gap-0.5">
-                        <span className="text-[8px] text-muted-foreground/70 tracking-[0.1em] uppercase">
-                          SRC {String.fromCharCode(65 + idx)}
-                        </span>
-                      </div>
-                    )}
                     {track.isReference && (
                       <div className="flex items-center gap-0.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        <span className="text-[8px] text-primary tracking-[0.1em] uppercase">MASTER</span>
+                        <span className="text-[8px] text-primary tracking-[0.1em] uppercase">ACTIVE</span>
                       </div>
                     )}
                     {track.isMuted && (
@@ -538,9 +451,9 @@ export function Timeline() {
                         <span className="text-[8px] text-muted-foreground tracking-[0.1em] uppercase">MUTED</span>
                       </div>
                     )}
-                    {sourcePlayTrackId === track.id && (
+                    {activeTrackId === track.id && (
                       <div className="flex items-center gap-0.5">
-                        <span className="text-[8px] text-primary/70 tracking-[0.1em] uppercase">▶ SRC</span>
+                        <span className="text-[8px] text-primary/70 tracking-[0.1em] uppercase">CORRECTED</span>
                       </div>
                     )}
                   </div>
@@ -557,7 +470,7 @@ export function Timeline() {
                     height={laneHeight}
                     className="absolute inset-0"
                   />
-                  {renderSegmentOverlay(track.id, track.duration, track.color, track.name)}
+                  {renderSegmentOverlay(track.id, track.duration)}
                 </div>
 
                 {/* Lane resize handle — straddles the bottom border so the hit
@@ -575,11 +488,10 @@ export function Timeline() {
               );
             })}
 
-            {/* ArrangementLane removed from the UI — the primary timeline IS
-                the arrangement. Section operations (mute, future reorder)
-                happen directly on structure segments via StructureRibbon.
-                Internal arrangementClips model is preserved for backward
-                compatibility but no longer surfaced. */}
+            {/* Section operations happen directly on detected segments via
+                StructureRibbon. The legacy clip model remains internal for
+                old project compatibility but is not part of the primary
+                single-track workflow. */}
 
             {/* Snap guide — cyan vertical line shown while dragging a clip */}
             {snapGuideVisible && (

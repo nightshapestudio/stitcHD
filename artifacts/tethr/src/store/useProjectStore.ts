@@ -284,15 +284,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // Waveform peaks (2000 points for display)
     const peaks = generateWaveformPeaks(audioBuffer);
 
-    const isFirstTrack = get().tracks.length === 0;
-
     // Heuristic song-structure detection. Uses detected BPM for bar-window
     // sizing; falls back to project BPM if detection failed.
     const structureBpm = detectedBpm ?? get().bpm;
     const structureSegments = detectStructure(audioBuffer, structureBpm);
+    const trackId = crypto.randomUUID();
 
     const newTrack: AudioTrack = {
-      id: crypto.randomUUID(),
+      id: trackId,
       name: file.name.replace(/\.[^/.]+$/, ''),
       file,
       fileName: file.name,
@@ -301,8 +300,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       channelCount: audioBuffer.numberOfChannels,
       audioBuffer,
       waveformData: peaks,
-      color: COLORS[get().tracks.length % COLORS.length],
-      isReference: isFirstTrack,
+      color: COLORS[0],
+      isReference: true,
       isMuted: false,
       volume: 1.0,
       estimatedBpm: detectedBpm,
@@ -313,30 +312,39 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     set((state) => {
       PAST_STATES.push(state);
-      // First import: apply detected tempo to project grid only (per-track estimatedBpm stays separate)
-      const applyDetectedToGrid = isFirstTrack && detectedBpm !== null;
+      // Single-track workflow: each import becomes the active working track.
+      // The detected tempo anchors the project grid, and the audio engine's
+      // existing SoundTouch source-only path handles pitch-preserving tempo
+      // conforming from this one active track.
+      const nextBpm = detectedBpm ?? state.bpm;
+      const nextBpmSource = detectedBpm !== null ? 'auto' : state.bpmSource;
 
-      // Auto-fit zoom on FIRST import only — fits the full song into the
-      // viewport with ~10% horizontal breathing room. Subsequent imports
-      // preserve the user's current zoom. Matches Timeline's
-      // baseVisibleDuration = 30 (zoom=1 → 30s visible).
+      // Auto-fit zoom to the imported song with ~10% horizontal breathing
+      // room. Matches Timeline's baseVisibleDuration = 30.
       let nextZoom = state.zoomLevel;
-      if (isFirstTrack && audioBuffer.duration > 0) {
+      if (audioBuffer.duration > 0) {
         const BASE_VISIBLE_DURATION = 30;
         const targetVisible = audioBuffer.duration * 1.1;
         nextZoom = Math.max(0.05, Math.min(20, BASE_VISIBLE_DURATION / targetVisible));
       }
 
       return {
-        tracks: [...state.tracks, newTrack],
-        bpm: applyDetectedToGrid ? detectedBpm : state.bpm,
-        bpmSource: applyDetectedToGrid ? 'auto' : state.bpmSource,
+        tracks: [newTrack],
+        arrangementClips: [],
+        selectedClipId: null,
+        selectedTrackId: trackId,
+        bpm: nextBpm,
+        appliedBpm: nextBpm,
+        bpmSource: nextBpmSource,
         zoomLevel: nextZoom,
-        // Reset playhead + scroll to origin on first import so the timeline
-        // ruler / transport counter both read B1 · 0:00 immediately and the
-        // waveform starts visually aligned.
-        playheadPosition: isFirstTrack ? 0 : state.playheadPosition,
-        scrollPosition: isFirstTrack ? 0 : state.scrollPosition,
+        // Reset playhead + scroll to origin so the timeline ruler / transport
+        // counter both read B1 · 0:00 immediately and the waveform starts
+        // visually aligned.
+        playheadPosition: 0,
+        scrollPosition: 0,
+        playbackState: 'stopped',
+        isApplyingTempo: false,
+        loopRegion: null,
       };
     });
   },
@@ -347,6 +355,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     return {
       tracks: state.tracks.filter(t => t.id !== id),
       arrangementClips: state.arrangementClips.filter(c => c.trackId !== id),
+      selectedTrackId: state.selectedTrackId === id ? null : state.selectedTrackId,
+      selectedClipId: state.arrangementClips.some(c => c.trackId === id && c.id === state.selectedClipId)
+        ? null
+        : state.selectedClipId,
     };
   }),
 
@@ -605,7 +617,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         });
       }
 
-      const loadedBpm = project.bpm ?? 120;
+      // Current TETHR workflow is intentionally single-track. Legacy project
+      // files may contain extra tracks/clips; loading normalizes the session
+      // back to one active corrected track without mutating the source file.
+      const activeTracks = tracksOut.slice(0, 1).map((t, i) => ({
+        ...t,
+        isReference: i === 0,
+      }));
+      const activeTrack = activeTracks[0] ?? null;
+      const loadedBpm = project.bpm ?? activeTrack?.estimatedBpm ?? 120;
 
       set({
         projectName: project.name || 'Untitled Project',
@@ -614,8 +634,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         // appear immediately after a load.
         appliedBpm: loadedBpm,
         bpmSource: project.bpmSource ?? 'manual',
-        tracks: tracksOut,
-        arrangementClips: project.arrangementClips ?? [],
+        tracks: activeTracks,
+        arrangementClips: [],
         segmentMode: project.segmentMode ?? 8,
         zoomLevel: project.zoomLevel ?? 1,
         scrollPosition: project.scrollPosition ?? 0,
@@ -623,7 +643,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         snapEnabled: project.snapEnabled ?? true,
         snapResolution: project.snapResolution ?? 'bar',
         selectedClipId: null,
-        selectedTrackId: null,
+        selectedTrackId: activeTrack?.id ?? null,
         playheadPosition: 0,
         playbackState: 'stopped',
       });

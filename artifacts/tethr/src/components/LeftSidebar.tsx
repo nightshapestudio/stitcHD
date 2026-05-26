@@ -2,8 +2,8 @@ import React, { useRef, useState } from 'react';
 import { useProjectStore } from '../store/useProjectStore';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
-import { Volume2, VolumeX, Trash2, Activity, Scissors, Hand, MousePointer2, RotateCcw, Magnet } from 'lucide-react';
-import { SegmentMode, BpmSource, SnapResolution } from '../types/audio';
+import { Volume2, VolumeX, Trash2, RotateCcw } from 'lucide-react';
+import { SegmentMode } from '../types/audio';
 import { BpmDragField } from './BpmDragField';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
@@ -20,7 +20,6 @@ export function LeftSidebar() {
     tracks,
     importTrack,
     removeTrack,
-    setReferenceTrack,
     updateTrack,
     bpm,
     appliedBpm,
@@ -32,12 +31,6 @@ export function LeftSidebar() {
     setApplyingTempo,
     segmentMode,
     setSegmentMode,
-    toolMode,
-    setToolMode,
-    snapEnabled,
-    snapResolution,
-    setSnapEnabled,
-    setSnapResolution,
   } = useProjectStore();
 
   // Mirrors Transport's tempoNeedsApply — surface the button next to both
@@ -54,10 +47,11 @@ export function LeftSidebar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tapTimes, setTapTimes] = useState<number[]>([]);
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => importTrack(file));
+      const [file] = Array.from(files);
+      if (file) await importTrack(file);
       e.target.value = '';
     }
   };
@@ -96,13 +90,20 @@ export function LeftSidebar() {
   const canRevertToAuto = refTrack?.estimatedBpm != null
     && Math.abs(refTrack.estimatedBpm - bpm) > 0.01;
   const hasLoadedAudio = tracks.some(track => !!track.audioBuffer);
-
-  const SNAP_LABELS: Record<SnapResolution, string> = {
-    'bar': 'Bar',
-    'beat': 'Beat',
-    '1/2-beat': '1/2',
-    '1/4-beat': '1/4',
-  };
+  const segmentCount = refTrack?.structureSegments?.length ?? 0;
+  const workflowStatus: Array<{ label: string; value: string; active: boolean }> = [
+    { label: 'Import Track', value: hasLoadedAudio ? 'Loaded' : 'Waiting', active: hasLoadedAudio },
+    {
+      label: 'Auto Correct',
+      value: hasLoadedAudio ? (refTrack?.estimatedBpm ? 'Active' : 'Manual BPM') : 'Standby',
+      active: hasLoadedAudio,
+    },
+    {
+      label: 'Segments',
+      value: hasLoadedAudio ? (segmentCount > 0 ? `${segmentCount} detected` : 'None yet') : 'Standby',
+      active: segmentCount > 0,
+    },
+  ];
 
   return (
     <div
@@ -163,7 +164,6 @@ export function LeftSidebar() {
           onChange={handleImport}
           className="hidden"
           accept="audio/*,.wav,.mp3,.m4a,.aiff,.aif"
-          multiple
         />
 
         {/* Project tempo — the single editable tempo field. The Transport
@@ -286,88 +286,47 @@ export function LeftSidebar() {
         </div>
       </div>
 
-      {/* Tool mode */}
+      {/* Processing flow */}
       <div className="px-6 pt-5 pb-5 border-b border-border/70 bg-black/10">
-        <div className="flex gap-4 mb-4">
-          {([
-            { mode: 'select' as const, Icon: MousePointer2, title: 'Select (V)' },
-            { mode: 'slip' as const, Icon: Hand, title: 'Slip (S)' },
-            { mode: 'split' as const, Icon: Scissors, title: 'Split (X)' },
-            { mode: 'warp' as const, Icon: Activity, title: 'Warp (W)' },
-          ]).map(({ mode, Icon, title }) => {
-            const active = toolMode === mode;
-            return (
-              <button
-                key={mode}
-                onClick={() => setToolMode(mode)}
-                title={title}
-                className="w-[50px] h-[50px] rounded-none flex items-center justify-center transition-colors hover:bg-white/[0.04]"
-                style={active ? {
-                  border: '1px solid hsl(268 80% 60%)',
-                  color: 'hsl(258 55% 74%)',
-                } : {
-                  border: '1px solid transparent',
-                  color: 'hsl(var(--text-mid))',
+        <div className="space-y-3">
+          {workflowStatus.map(({ label, value, active }) => (
+            <div key={label} className="grid grid-cols-[148px_1fr] items-baseline gap-4">
+              <span
+                className="uppercase"
+                style={{
+                  color: SIDE_LABEL_COLOR,
+                  fontFamily: 'var(--app-font-ui)',
+                  fontWeight: 700,
+                  fontSize: '10px',
+                  letterSpacing: '0.24em',
                 }}
               >
-                <Icon className="w-4 h-4" />
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Snap controls */}
-        <div className="grid grid-cols-[132px_1fr] gap-3">
-          <button
-            onClick={() => setSnapEnabled(!snapEnabled)}
-            title={snapEnabled ? 'Snap ON — click to disable (Shift inverts during drag)' : 'Snap OFF — click to enable'}
-            className="flex items-center justify-center gap-2 h-11 px-3 border uppercase transition-colors shrink-0 hover:bg-white/[0.04]"
-            style={{
-              fontFamily: 'var(--app-font-ui)',
-              fontWeight: 700,
-              fontSize: '12px',
-              letterSpacing: '0.22em',
-              borderColor: snapEnabled ? 'hsl(268 80% 60%)' : 'hsl(230 7% 18%)',
-              color: snapEnabled ? 'hsl(258 55% 74%)' : 'hsl(var(--text-mid))',
-            }}
-          >
-            <Magnet className="w-3 h-3" />
-            Snap
-          </button>
-          <Select
-            value={snapResolution}
-            onValueChange={(v) => setSnapResolution(v as SnapResolution)}
-          >
-            <SelectTrigger
-              className="h-11 flex-1 bg-transparent rounded-none uppercase focus:ring-0 transition-colors hover:bg-white/[0.04]"
-              style={{
-                fontFamily: 'var(--app-font-ui)',
-                fontWeight: 700,
-                fontSize: '12px',
-                letterSpacing: '0.22em',
-                borderColor: snapEnabled ? 'hsl(268 60% 45%)' : 'hsl(230 7% 18%)',
-                color: snapEnabled ? 'hsl(258 55% 74%)' : 'hsl(var(--text-mid))',
-              }}
-            >
-              <SelectValue>{SNAP_LABELS[snapResolution]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="rounded-none border-border">
-              <SelectItem value="bar" className="text-xs uppercase tracking-[0.08em] rounded-none">Bar</SelectItem>
-              <SelectItem value="beat" className="text-xs uppercase tracking-[0.08em] rounded-none">Beat</SelectItem>
-              <SelectItem value="1/2-beat" className="text-xs uppercase tracking-[0.08em] rounded-none">½ Beat</SelectItem>
-              <SelectItem value="1/4-beat" className="text-xs uppercase tracking-[0.08em] rounded-none">¼ Beat</SelectItem>
-            </SelectContent>
-          </Select>
+                {label}
+              </span>
+              <span
+                className="uppercase text-right"
+                style={{
+                  color: active ? 'hsl(var(--signal))' : 'hsl(var(--text-mid))',
+                  fontFamily: 'var(--app-font-ui)',
+                  fontWeight: 700,
+                  fontSize: '11px',
+                  letterSpacing: '0.20em',
+                }}
+              >
+                {value}
+              </span>
+            </div>
+          ))}
         </div>
         <p
-          className="text-[11px] mt-4 uppercase tracking-[0.28em] leading-tight"
+          className="text-[11px] mt-5 uppercase tracking-[0.28em] leading-tight"
           style={{
             fontFamily: 'var(--app-font-ui)',
             fontWeight: 700,
             color: 'hsl(258 38% 62%)',
           }}
         >
-          Shift inverts snap during drag
+          Imported audio becomes the active corrected track
         </p>
       </div>
 
@@ -435,15 +394,12 @@ export function LeftSidebar() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-5 text-[9px] uppercase tracking-[0.08em] px-2 rounded-none ${track.isReference ? 'border border-primary text-primary' : 'border border-border text-muted-foreground hover:border-primary/50'}`}
-                onClick={() => setReferenceTrack(track.id)}
-                title="Default track for source playback when no arrangement clips exist"
+              <div
+                className="h-5 text-[9px] uppercase tracking-[0.08em] px-2 border border-primary/50 text-primary flex items-center"
+                title="Active corrected track"
               >
-                {track.isReference ? 'MASTER' : 'SET MASTER'}
-              </Button>
+                Active
+              </div>
               <Button
                 variant="ghost"
                 size="icon"

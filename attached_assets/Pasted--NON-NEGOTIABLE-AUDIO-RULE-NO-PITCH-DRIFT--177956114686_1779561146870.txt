@@ -20,7 +20,7 @@ If the app cannot preserve pitch for a timing operation, it should:
 PITCH-PRESERVING TIMING REPAIR PHILOSOPHY
 ====================================================
 
-STITCHD should repair timing without changing musical pitch.
+TETHR should repair timing without changing musical pitch.
 
 The goal is:
 - same pitch
@@ -59,7 +59,7 @@ SIMILAR-AUDIO SWAP / MICRO-SURGERY GOAL
 
 Finished-product goal:
 
-If two imported versions contain matching or similar musical material, STITCHD should be able to repair timing by swapping, trimming, extending, or replacing tiny sections of audio rather than changing pitch.
+If two imported versions contain matching or similar musical material, TETHR should be able to repair timing by swapping, trimming, extending, or replacing tiny sections of audio rather than changing pitch.
 
 Example:
 If Song 2 bridge is slightly too long for Song 1’s bridge slot:

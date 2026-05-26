@@ -1,6 +1,6 @@
 Not yet. Do not add nudge seam right now.
 
-First, create/update STITCHD_STATUS.txt with the latest completed milestone so the current state is preserved.
+First, create/update TETHR_STATUS.txt with the latest completed milestone so the current state is preserved.
 
 Add this milestone:
 

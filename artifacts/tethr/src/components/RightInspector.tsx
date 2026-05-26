@@ -102,7 +102,7 @@ export function RightInspector() {
         </div>
 
         <div className="text-[9px] uppercase tracking-[0.12em] font-mono text-muted-foreground px-2">
-          SRC: {track.name}
+          TRACK: {track.name}
         </div>
       </div>
 
