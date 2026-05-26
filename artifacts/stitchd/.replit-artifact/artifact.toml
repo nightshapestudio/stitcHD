@@ -1,8 +1,8 @@
 kind = "web"
 previewPath = "/"
-title = "NIGHTSHAPE STITCHD"
+title = "NIGHTSHAPE TETHR"
 version = "1.0.0"
-id = "artifacts/stitchd"
+id = "artifacts/tethr"
 router = "path"
 
 [[integratedSkills]]
@@ -15,11 +15,11 @@ paths = [ "/" ]
 localPort = 25107
 
 [services.development]
-run = "pnpm --filter @workspace/stitchd run dev"
+run = "pnpm --filter @workspace/tethr run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/stitchd", "run", "build" ]
-publicDir = "artifacts/stitchd/dist/public"
+build = [ "pnpm", "--filter", "@workspace/tethr", "run", "build" ]
+publicDir = "artifacts/tethr/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]

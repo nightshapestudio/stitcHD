@@ -1,4 +1,4 @@
-# NIGHTSHAPE STITCHD
+# NIGHTSHAPE TETHR
 
 Browser-based audio repair editor — fix timing drift and reconstruct songs from multiple versions entirely in the browser.
 
@@ -19,7 +19,7 @@ Both modes are equally core to the product. Neither is secondary.
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string (API server only, not needed for STITCHD)
+- Required env: `DATABASE_URL` — Postgres connection string (API server only, not needed for TETHR)
 
 ## Stack
 
@@ -29,11 +29,11 @@ Both modes are equally core to the product. Neither is secondary.
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
-- STITCHD: React + Vite + Zustand + Web Audio API + Canvas (pure frontend, no DB)
+- TETHR: React + Vite + Zustand + Web Audio API + Canvas (pure frontend, no DB)
 
 ## Where things live
 
-- `artifacts/stitchd/` — STITCHD audio editor (pure frontend, port 25107)
+- `artifacts/tethr/` — TETHR audio editor (pure frontend, port 25107)
   - `src/store/useProjectStore.ts` — Zustand store (source of truth for all state)
   - `src/hooks/useAudioEngine.ts` — Web Audio API engine + WAV renderer
   - `src/components/StitchdEditor.tsx` — top-level editor layout
@@ -43,7 +43,7 @@ Both modes are equally core to the product. Neither is secondary.
 
 ## Architecture decisions
 
-- STITCHD is entirely client-side — Web Audio API for playback, Canvas for waveforms, Zustand for state. No server round-trips needed.
+- TETHR is entirely client-side — Web Audio API for playback, Canvas for waveforms, Zustand for state. No server round-trips needed.
 - Time stretching via `playbackRate` is intentionally labeled **"DRAFT ONLY — changes pitch"** in the UI. Real pitch-preserving stretch is not implemented — this is the non-negotiable design rule.
 - Beat grid snapping uses Shift key modifier on drag operations.
 - Clip arrangement lane uses pointer capture API for smooth drag without losing events.
@@ -58,7 +58,7 @@ Both modes are equally core to the product. Neither is secondary.
 - **Edit**: Move/trim/split/duplicate clips; fade in/out with ms presets + 1-bar preset; nudge offset
 - **Audition**: "Audition Seam" loops ±2 bars around a clip boundary for seam verification
 - **Export**: Render arrangement to WAV (44.1 kHz or 48 kHz, 16-bit PCM stereo)
-- **Project**: Save/load `.stitchd` session files (audio re-imported by filename on load)
+- **Project**: Save/load `.tethr` session files (audio re-imported by filename on load)
 - **Source playback**: Play falls back to source track when no arrangement clips exist
 
 ## Long-Term Single-Track Repair Roadmap
@@ -77,8 +77,8 @@ Future capabilities (not yet implemented — pitch-preserving engine required):
 
 ## Gotchas
 
-- STITCHD does not use the API server or database — it's a pure frontend app
-- Audio files cannot be bundled in `.stitchd` project files due to browser security restrictions; users must re-import files with matching names on load
+- TETHR does not use the API server or database — it's a pure frontend app
+- Audio files cannot be bundled in `.tethr` project files due to browser security restrictions; users must re-import files with matching names on load
 - `vite.config.ts` uses `dedupe: ["react", "react-dom", "zustand"]` to prevent multiple Zustand instances
 
 ## Pointers
