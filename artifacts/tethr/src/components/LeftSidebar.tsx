@@ -117,7 +117,7 @@ export function LeftSidebar() {
         <div className="space-y-4">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-transparent uppercase rounded-none h-[96px] text-left px-6 transition-colors hover:bg-white/[0.025]"
+            className="w-full bg-transparent uppercase rounded-none h-[96px] px-6 transition-colors hover:bg-white/[0.025] flex items-center justify-center text-center leading-none"
             style={{
               border: '2px solid hsl(268 80% 60%)',
               color: 'hsl(var(--signal))',
@@ -128,7 +128,7 @@ export function LeftSidebar() {
               boxShadow: 'inset 0 0 0 1px hsl(var(--signal) / 0.10)',
             }}
           >
-            Import Audio
+            <span style={{ transform: 'translateX(0.125em)' }}>Import Audio</span>
           </button>
 
           <div className="grid grid-cols-[88px_1fr] items-baseline gap-4 px-1" aria-live="polite">

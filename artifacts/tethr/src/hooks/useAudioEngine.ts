@@ -614,6 +614,7 @@ export function useAudioEngine() {
           sourceTrack.audioBuffer,
           sourceTrack.beatCorrectionMap,
           bpm,
+          { renderIfMissing: false },
         );
         if (corrected) {
           playBuffer = corrected;

@@ -1,12 +1,22 @@
 import type { BeatCorrectionMap, BeatMarker } from '../types/audio';
-import { getTimeStretchedSlice } from './timeStretch';
 
 const ANALYSIS_HOP = 512;
 const ANALYSIS_FRAME = 1024;
 const MIN_MARKERS = 8;
 const CORRECTED_CACHE_MAX = 8;
+const CONFIDENT_MARKER_THRESHOLD = 0.16;
+const MIN_MAP_CONFIDENCE = 0.38;
+const MIN_RENDER_CORRECTION_STRENGTH = 0.08;
+const MIN_CORRECTION_DRIFT_MS = 10;
+const FULL_CORRECTION_DRIFT_MS = 46;
+const RESIDUAL_SMOOTHING_BEATS = 4;
+const MAX_RESIDUAL_STEP_SEC = 0.040;
 const correctedCache = new Map<string, AudioBuffer>();
 const correctedPending = new Map<string, Promise<AudioBuffer>>();
+
+type BeatCorrectionRenderOptions = {
+  renderIfMissing?: boolean;
+};
 
 export function detectBeatCorrectionMap(
   buffer: AudioBuffer,
@@ -22,13 +32,14 @@ export function detectBeatCorrectionMap(
   const beatFrames = Math.max(1, Math.round(beatInterval / envelope.hopSeconds));
   const phaseFrame = estimateBeatPhase(envelope.values, beatFrames);
   const markers = trackBeats(envelope, sourceBpm, phaseFrame);
-  const confidentMarkers = markers.filter(m => m.confidence >= 0.18);
+  const confidentMarkers = markers.filter(m => m.confidence >= CONFIDENT_MARKER_THRESHOLD);
+  const minConfidenceRatio = buffer.duration > 45 ? 0.28 : 0.38;
 
-  if (markers.length < MIN_MARKERS || confidentMarkers.length < Math.max(4, markers.length * 0.35)) {
+  if (markers.length < MIN_MARKERS || confidentMarkers.length < Math.max(4, markers.length * minConfidenceRatio)) {
     return null;
   }
 
-  const firstBeatTime = markers[0]?.sourceTime ?? 0;
+  const firstBeatTime = estimateFirstBeatTime(confidentMarkers, markers, beatInterval);
   const drift = confidentMarkers.map(m =>
     Math.abs(m.sourceTime - (firstBeatTime + m.index * beatInterval)) * 1000,
   );
@@ -36,7 +47,14 @@ export function detectBeatCorrectionMap(
     ? drift.reduce((sum, d) => sum + d, 0) / drift.length
     : 0;
   const maxDriftMs = drift.length > 0 ? Math.max(...drift) : 0;
-  const confidence = Math.max(0, Math.min(1, confidentMarkers.length / markers.length));
+  const coverage = confidentMarkers.length / markers.length;
+  const meanStrength = confidentMarkers.reduce((sum, m) => sum + m.strength, 0) / confidentMarkers.length;
+  const coherence = residualCoherence(confidentMarkers, firstBeatTime, beatInterval);
+  const confidence = Math.max(0, Math.min(1,
+    (coverage * 0.56) + (Math.min(1, meanStrength) * 0.24) + (coherence * 0.20),
+  ));
+
+  if (confidence < MIN_MAP_CONFIDENCE) return null;
 
   return {
     sourceBpm,
@@ -48,6 +66,48 @@ export function detectBeatCorrectionMap(
     averageDriftMs,
     maxDriftMs,
   };
+}
+
+function estimateFirstBeatTime(
+  confidentMarkers: BeatMarker[],
+  markers: BeatMarker[],
+  beatInterval: number,
+): number {
+  const weighted = confidentMarkers.length >= 4 ? confidentMarkers : markers;
+  const candidates = weighted
+    .map(marker => ({
+      value: marker.sourceTime - marker.index * beatInterval,
+      weight: Math.max(0.05, marker.confidence),
+    }))
+    .sort((a, b) => a.value - b.value);
+
+  const total = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+  let running = 0;
+  for (const candidate of candidates) {
+    running += candidate.weight;
+    if (running >= total * 0.5) return candidate.value;
+  }
+  return markers[0]?.sourceTime ?? 0;
+}
+
+function residualCoherence(markers: BeatMarker[], firstBeatTime: number, beatInterval: number): number {
+  if (markers.length < 4) return 0;
+  let total = 0;
+  let count = 0;
+
+  for (let i = 1; i < markers.length; i++) {
+    const prev = markers[i - 1];
+    const marker = markers[i];
+    const beatGap = Math.max(1, marker.index - prev.index);
+    const prevResidual = prev.sourceTime - (firstBeatTime + prev.index * beatInterval);
+    const residual = marker.sourceTime - (firstBeatTime + marker.index * beatInterval);
+    total += Math.abs(residual - prevResidual) / beatGap;
+    count++;
+  }
+
+  const meanResidualStep = count > 0 ? total / count : 0;
+  const normalized = (meanResidualStep - 0.010) / 0.060;
+  return Math.max(0, Math.min(1, 1 - normalized));
 }
 
 export function beatCorrectedDuration(
@@ -87,8 +147,11 @@ export async function getBeatCorrectedBuffer(
   buffer: AudioBuffer,
   map: BeatCorrectionMap | null | undefined,
   targetBpm: number,
+  options: BeatCorrectionRenderOptions = {},
 ): Promise<AudioBuffer | null> {
   if (!map || map.markers.length < MIN_MARKERS || targetBpm <= 0) return null;
+  if ((map.confidence ?? 0) < MIN_MAP_CONFIDENCE) return null;
+  if (correctionStrengthForMap(map) < MIN_RENDER_CORRECTION_STRENGTH) return null;
 
   const anchors = buildAnchors(map, targetBpm, buffer.duration);
   if (anchors.length < 3) return null;
@@ -108,6 +171,9 @@ export async function getBeatCorrectedBuffer(
 
   const cached = correctedCache.get(cacheKey);
   if (cached) return cached;
+
+  if (options.renderIfMissing === false) return null;
+
   const inflight = correctedPending.get(cacheKey);
   if (inflight) return inflight;
 
@@ -217,7 +283,7 @@ function estimateBeatPhase(values: Float32Array, beatFrames: number): number {
     let score = 0;
     let count = 0;
     for (let frame = phase; frame < values.length; frame += beatFrames) {
-      score += localPeak(values, frame, localRadius).strength;
+      score += localPeak(values, frame, localRadius).score;
       count++;
     }
     const normalized = count > 0 ? score / Math.sqrt(count) : 0;
@@ -244,6 +310,10 @@ function trackBeats(envelope: OnsetEnvelope, sourceBpm: number, phaseFrame: numb
     const predictedTime = predictedFrame * envelope.hopSeconds;
     const prev = markers[markers.length - 1];
     const tooClose = prev && peakTime - prev.sourceTime < minSpacingSeconds;
+    const trackingPull = strongEnough && !tooClose
+      ? Math.min(0.62, 0.24 + peak.strength * 0.34)
+      : 0;
+    const trackedTime = predictedTime + (peakTime - predictedTime) * trackingPull;
     const sourceTime = strongEnough && !tooClose ? peakTime : predictedTime;
     const strength = strongEnough && !tooClose ? peak.strength : Math.max(0, peak.strength * 0.45);
 
@@ -254,35 +324,50 @@ function trackBeats(envelope: OnsetEnvelope, sourceBpm: number, phaseFrame: numb
       strength,
     });
 
-    predictedFrame = Math.round((sourceTime + beatInterval) / envelope.hopSeconds);
+    predictedFrame = Math.round((trackedTime + beatInterval) / envelope.hopSeconds);
   }
 
   return markers.filter(m => m.sourceTime >= 0 && Number.isFinite(m.sourceTime));
 }
 
-function localPeak(values: Float32Array, center: number, radius: number): { index: number; strength: number } {
+function localPeak(values: Float32Array, center: number, radius: number): { index: number; strength: number; score: number } {
   const start = Math.max(0, center - radius);
   const end = Math.min(values.length - 1, center + radius);
   let bestIndex = Math.max(0, Math.min(values.length - 1, center));
   let bestStrength = values[bestIndex] ?? 0;
+  let bestScore = bestStrength;
   for (let i = start; i <= end; i++) {
     const v = values[i];
-    if (v > bestStrength) {
+    const distance = Math.abs(i - center) / Math.max(1, radius);
+    const proximity = 1 - Math.min(1, distance);
+    // A slightly weaker transient near the predicted beat is usually more
+    // musical than snapping to a louder swung/off-beat hit. This protects
+    // groove feel and reduces flammy correction jumps.
+    const score = v * (0.58 + proximity * 0.42);
+    if (score > bestScore) {
       bestStrength = v;
+      bestScore = score;
       bestIndex = i;
     }
   }
-  return { index: bestIndex, strength: bestStrength };
+  return { index: bestIndex, strength: bestStrength, score: bestScore };
 }
 
 function buildAnchors(map: BeatCorrectionMap, targetBpm: number, sourceDuration: number): Anchor[] {
   const sourceToTargetRatio = targetBpm / map.sourceBpm;
   const targetBeatInterval = 60 / targetBpm;
   const targetFirstBeat = map.firstBeatTime / Math.max(0.05, sourceToTargetRatio);
+  const sourceResiduals = smoothResiduals(map);
+  const correctionStrength = correctionStrengthForMap(map);
   const anchors: Anchor[] = [{ source: 0, target: 0 }];
 
   for (const marker of map.markers) {
-    const source = Math.max(0, Math.min(sourceDuration, marker.sourceTime));
+    const idealSource = map.firstBeatTime + marker.index * map.beatInterval;
+    const smoothedResidual = sourceResiduals[marker.index] ?? 0;
+    const source = Math.max(
+      0,
+      Math.min(sourceDuration, idealSource + smoothedResidual * correctionStrength),
+    );
     const target = Math.max(0, targetFirstBeat + marker.index * targetBeatInterval);
     const last = anchors[anchors.length - 1];
     if (source <= last.source + 0.035 || target <= last.target + 0.035) continue;
@@ -298,6 +383,64 @@ function buildAnchors(map: BeatCorrectionMap, targetBpm: number, sourceDuration:
   return anchors;
 }
 
+function correctionStrengthForMap(map: BeatCorrectionMap): number {
+  const normalized = (map.averageDriftMs - MIN_CORRECTION_DRIFT_MS)
+    / Math.max(1, FULL_CORRECTION_DRIFT_MS - MIN_CORRECTION_DRIFT_MS);
+  const confidentMarkers = map.markers.filter(m => m.confidence >= CONFIDENT_MARKER_THRESHOLD);
+  const coherence = residualCoherence(confidentMarkers, map.firstBeatTime, map.beatInterval);
+  return Math.max(0, Math.min(0.92, normalized)) * coherence;
+}
+
+function smoothResiduals(map: BeatCorrectionMap): number[] {
+  const raw = map.markers.map(marker => ({
+    index: marker.index,
+    value: marker.sourceTime - (map.firstBeatTime + marker.index * map.beatInterval),
+    weight: Math.max(0.05, Math.min(1, marker.confidence)),
+  }));
+  const smoothed: number[] = [];
+
+  for (const marker of raw) {
+    let weighted = 0;
+    let weightTotal = 0;
+    for (const other of raw) {
+      const distance = Math.abs(other.index - marker.index);
+      if (distance > RESIDUAL_SMOOTHING_BEATS) continue;
+      const proximity = 1 - (distance / (RESIDUAL_SMOOTHING_BEATS + 1));
+      const weight = other.weight * proximity * proximity;
+      weighted += other.value * weight;
+      weightTotal += weight;
+    }
+    smoothed[marker.index] = weightTotal > 0 ? weighted / weightTotal : marker.value;
+  }
+
+  let previous = smoothed[0] ?? 0;
+  for (let i = 0; i < smoothed.length; i++) {
+    const value = smoothed[i] ?? previous;
+    const limited = previous + Math.max(-MAX_RESIDUAL_STEP_SEC, Math.min(MAX_RESIDUAL_STEP_SEC, value - previous));
+    smoothed[i] = limited;
+    previous = limited;
+  }
+
+  return smoothed;
+}
+
+function buildRenderSpans(anchors: Anchor[], sourceDuration: number): Array<Anchor & { sourceEnd: number; targetEnd: number }> {
+  const spans: Array<Anchor & { sourceEnd: number; targetEnd: number }> = [];
+  for (let i = 0; i < anchors.length; i++) {
+    const prev = anchors[i - 1];
+    const current = anchors[i];
+    const next = anchors[i + 1];
+    const source = prev ? (prev.source + current.source) / 2 : 0;
+    const sourceEnd = next ? (current.source + next.source) / 2 : sourceDuration;
+    const target = prev ? (prev.target + current.target) / 2 : 0;
+    const targetEnd = next ? (current.target + next.target) / 2 : current.target;
+    if (sourceEnd - source > 0.045 && targetEnd - target > 0.045) {
+      spans.push({ source, target, sourceEnd, targetEnd });
+    }
+  }
+  return spans;
+}
+
 async function renderBeatCorrectedBuffer(
   ctx: BaseAudioContext,
   trackId: string,
@@ -309,13 +452,17 @@ async function renderBeatCorrectedBuffer(
   const sampleRate = buffer.sampleRate;
   const outFrames = Math.max(1, Math.ceil((correctedDuration + 0.02) * sampleRate));
   const out = ctx.createBuffer(buffer.numberOfChannels, outFrames, sampleRate);
-  const fadeFrames = Math.max(8, Math.floor(sampleRate * 0.0035));
+  // These joins happen every beat-ish span, so keep protection short. Longer
+  // fades read as level flutter on steady drums.
+  const fadeFrames = Math.max(4, Math.floor(sampleRate * 0.0012));
 
-  for (let i = 0; i < anchors.length - 1; i++) {
-    const a = anchors[i];
-    const b = anchors[i + 1];
-    const sourceDuration = b.source - a.source;
-    const targetDuration = b.target - a.target;
+  const spans = buildRenderSpans(anchors, buffer.duration);
+  const { getTimeStretchedSlice } = await import('./timeStretch');
+
+  for (let i = 0; i < spans.length; i++) {
+    const span = spans[i];
+    const sourceDuration = span.sourceEnd - span.source;
+    const targetDuration = span.targetEnd - span.target;
     if (sourceDuration <= 0.025 || targetDuration <= 0.025) continue;
 
     const ratio = Math.max(0.25, Math.min(4, sourceDuration / targetDuration));
@@ -323,12 +470,12 @@ async function renderBeatCorrectedBuffer(
       ctx,
       `${trackId}:${cacheKey}`,
       buffer,
-      a.source,
+      span.source,
       sourceDuration,
       ratio,
     );
 
-    mixSlice(out, slice, Math.round(a.target * sampleRate), fadeFrames, i > 0, i < anchors.length - 2);
+    mixSlice(out, slice, Math.round(span.target * sampleRate), fadeFrames, i > 0, i < spans.length - 1);
   }
 
   return out;
