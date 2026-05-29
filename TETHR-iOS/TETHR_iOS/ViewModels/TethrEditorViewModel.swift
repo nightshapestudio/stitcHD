@@ -8,9 +8,12 @@ final class TethrEditorViewModel: ObservableObject {
     @Published private(set) var isPlaying = false
     @Published var isImportPresented = false
 
+    private let bpmRange = 60...200
     private let audioEngine: TethrAudioEngineProtocol
     private let sharedSegmentPipeline: TethrSharedSegmentAnalysisPipeline
     private let compositePlanner: TethrCompositePlanning
+    private var pendingImportSlot: TethrSourceSlot = .primary
+    private var tapTempoHistory: [Date] = []
 
     init(
         audioEngine: TethrAudioEngineProtocol = TethrAudioEngine(),
@@ -24,6 +27,10 @@ final class TethrEditorViewModel: ObservableObject {
 
     var sourceTitle: String {
         project.sourceName ?? "No source"
+    }
+
+    var currentMasterBpm: Int {
+        project.masterBpm ?? project.detectedBpm.map { Int($0.rounded()) } ?? 128
     }
 
     var telemetryItems: [TethrTelemetryItem] {
@@ -40,7 +47,7 @@ final class TethrEditorViewModel: ObservableObject {
                 label: "BPM",
                 value: project.bpmText,
                 detail: project.confidenceText,
-                tone: project.detectedBpm == nil ? .muted : .indigo
+                tone: project.masterBpm == nil && project.detectedBpm == nil ? .muted : .indigo
             ),
             TethrTelemetryItem(
                 id: "correction",
@@ -59,7 +66,8 @@ final class TethrEditorViewModel: ObservableObject {
         ]
     }
 
-    func presentImport() {
+    func presentImport(slot: TethrSourceSlot = .primary) {
+        pendingImportSlot = slot
         isImportPresented = true
     }
 
@@ -70,11 +78,16 @@ final class TethrEditorViewModel: ObservableObject {
     func handleImport(result: Result<URL, Error>) {
         switch result {
         case .success(let url):
+            let importSlot = pendingImportSlot
             project.importState = .reading
-            project.sourceName = url.lastPathComponent
-            project.sourceDuration = nil
-            project.detectedBpm = nil
-            project.bpmConfidence = nil
+            if importSlot == .primary || project.sourceName == nil {
+                project.sourceName = url.lastPathComponent
+                project.sourceDuration = nil
+                project.detectedBpm = nil
+                project.masterBpm = nil
+                project.isMasterBpmManual = false
+                project.bpmConfidence = nil
+            }
             project.correctionState = .analyzing
             project.segmentCount = 0
             playheadProgress = 0
@@ -83,21 +96,51 @@ final class TethrEditorViewModel: ObservableObject {
             Task {
                 do {
                     let summary = try await audioEngine.inspectSource(at: url)
-                    registerSource(summary, url: url, slot: .primary)
-                    project.sourceName = summary.fileName
-                    project.sourceDuration = summary.duration
+                    registerSource(summary, url: url, slot: importSlot)
+                    if importSlot == .primary || project.sourceName == nil {
+                        project.sourceName = summary.fileName
+                        project.sourceDuration = summary.duration
+                    }
                     project.importState = .loaded
                     project.correctionState = .conservative
                 } catch {
                     project.importState = .failed
                     project.correctionState = .standby
-                    project.sourceDuration = nil
+                    if importSlot == .primary || project.sourceName == nil {
+                        project.sourceDuration = nil
+                    }
                 }
             }
         case .failure:
             project.importState = .failed
             project.correctionState = .standby
         }
+    }
+
+    func setMasterBpm(_ bpm: Int) {
+        project.masterBpm = clampedBpm(bpm)
+        project.isMasterBpmManual = true
+    }
+
+    func adjustMasterBpm(from baseBpm: Int, verticalTranslation: Double) {
+        let delta = Int((-verticalTranslation / 8).rounded())
+        setMasterBpm(baseBpm + delta)
+    }
+
+    func registerTapTempo() {
+        let now = Date()
+        tapTempoHistory = tapTempoHistory.filter { now.timeIntervalSince($0) <= 2.2 }
+        tapTempoHistory.append(now)
+
+        guard tapTempoHistory.count >= 2 else { return }
+
+        let intervals = zip(tapTempoHistory.dropFirst(), tapTempoHistory).map { current, previous in
+            current.timeIntervalSince(previous)
+        }
+        let averageInterval = intervals.reduce(0, +) / Double(intervals.count)
+        guard averageInterval > 0 else { return }
+
+        setMasterBpm(Int((60 / averageInterval).rounded()))
     }
 
     func togglePlayback() {
@@ -145,6 +188,10 @@ final class TethrEditorViewModel: ObservableObject {
             composition.applySharedSegmentMap(segmentMap)
             project.segmentCount = segmentMap.segments.count
             project.detectedBpm = segmentMap.detectedBpm
+            if project.masterBpm == nil {
+                project.masterBpm = segmentMap.detectedBpm.map { clampedBpm(Int($0.rounded())) }
+                project.isMasterBpmManual = false
+            }
             project.bpmConfidence = segmentMap.confidence
             project.correctionState = .ready
             refreshCompositePlan()
@@ -161,5 +208,9 @@ final class TethrEditorViewModel: ObservableObject {
         } catch {
             composition.updateCompositePlan(.empty)
         }
+    }
+
+    private func clampedBpm(_ bpm: Int) -> Int {
+        min(max(bpm, bpmRange.lowerBound), bpmRange.upperBound)
     }
 }

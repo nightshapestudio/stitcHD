@@ -4,7 +4,7 @@ struct WaveformPlaceholderView: View {
     let isLoaded: Bool
     let playheadProgress: Double
 
-    private let bars: [Double] = [
+    private let bars: [CGFloat] = [
         0.18, 0.32, 0.24, 0.54, 0.78, 0.36, 0.28, 0.46,
         0.66, 0.42, 0.22, 0.58, 0.84, 0.52, 0.34, 0.48,
         0.74, 0.62, 0.26, 0.38, 0.56, 0.88, 0.44, 0.30,
@@ -23,12 +23,11 @@ struct WaveformPlaceholderView: View {
                 Rectangle()
                     .fill(TethrTheme.cyan)
                     .frame(width: 2)
-                    .shadow(color: TethrTheme.cyan.opacity(0.28), radius: 6)
-                    .offset(x: max(0, min(1, playheadProgress)) * geometry.size.width)
-                    .opacity(isLoaded ? 1 : 0.22)
+                    .offset(x: CGFloat(max(0, min(1, playheadProgress))) * geometry.size.width)
+                    .opacity(isLoaded ? 0.94 : 0.22)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 16)
+            .padding(.vertical, 22)
         }
         .tethrPanel(isRaised: true)
     }
@@ -36,26 +35,31 @@ struct WaveformPlaceholderView: View {
     private func waveform(in size: CGSize) -> some View {
         HStack(alignment: .center, spacing: 3) {
             ForEach(bars.indices, id: \.self) { index in
-                Capsule(style: .continuous)
+                Rectangle()
                     .fill(barColor(for: index))
                     .frame(maxWidth: .infinity)
-                    .frame(height: max(8, size.height * bars[index] * 0.72))
+                    .frame(height: barHeight(for: index, in: size))
             }
         }
     }
 
+    private func barHeight(for index: Int, in size: CGSize) -> CGFloat {
+        let availableHeight = max(6, size.height - 48)
+        return min(availableHeight, max(6, size.height * bars[index] * 0.56))
+    }
+
     private func barColor(for index: Int) -> Color {
         guard isLoaded else {
-            return TethrTheme.textLow.opacity(0.46)
+            return TethrTheme.textLow.opacity(0.34)
         }
 
         if index % 11 == 0 {
-            return TethrTheme.purple.opacity(0.72)
+            return TethrTheme.purple.opacity(0.76)
         }
         if index % 7 == 0 {
-            return TethrTheme.indigo.opacity(0.72)
+            return TethrTheme.indigo.opacity(0.76)
         }
-        return TethrTheme.cyan.opacity(0.70)
+        return TethrTheme.cyan.opacity(0.84)
     }
 }
 

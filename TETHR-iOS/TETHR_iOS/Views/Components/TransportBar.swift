@@ -17,7 +17,7 @@ struct TransportBar: View {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
                         Text(sourceTitle)
-                            .font(.system(size: 13, weight: .semibold, design: .default))
+                            .font(TethrFont.regular(13))
                             .lineLimit(1)
                             .minimumScaleFactor(0.64)
                             .foregroundStyle(TethrTheme.text)
@@ -25,7 +25,7 @@ struct TransportBar: View {
                         Spacer(minLength: 8)
 
                         Text(durationText)
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .font(TethrFont.light(12))
                             .foregroundStyle(TethrTheme.textMid)
                     }
 
@@ -57,9 +57,9 @@ struct TransportBar: View {
         .buttonStyle(.plain)
         .foregroundStyle(TethrTheme.cyan)
         .background(TethrTheme.cyan.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .clipShape(Rectangle())
         .overlay(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            Rectangle()
                 .stroke(TethrTheme.cyan.opacity(0.34), lineWidth: 1)
         )
     }

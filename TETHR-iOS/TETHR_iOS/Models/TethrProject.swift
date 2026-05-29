@@ -26,6 +26,8 @@ struct TethrProject: Equatable {
     var sourceDuration: TimeInterval?
     var importState: TethrImportState = .empty
     var detectedBpm: Double?
+    var masterBpm: Int?
+    var isMasterBpmManual = false
     var bpmConfidence: Double?
     var correctionState: TethrCorrectionState = .standby
     var segmentCount: Int = 0
@@ -41,11 +43,12 @@ struct TethrProject: Equatable {
     }
 
     var bpmText: String {
-        guard let detectedBpm else { return "---" }
-        return String(format: "%.1f", detectedBpm)
+        guard let bpm = masterBpm ?? detectedBpm.map({ Int($0.rounded()) }) else { return "---" }
+        return "\(bpm)"
     }
 
     var confidenceText: String {
+        if isMasterBpmManual { return "Manual" }
         guard let bpmConfidence else { return "No read" }
         return "\(Int((bpmConfidence * 100).rounded()))%"
     }
